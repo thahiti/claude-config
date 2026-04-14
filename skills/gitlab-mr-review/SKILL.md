@@ -1,6 +1,6 @@
 ---
 name: gitlab-mr-review
-description: Use when the user provides a GitLab merge request URL (e.g. https://git.ahha.tf/.../merge_requests/123) and wants a code review
+description: Use when the user provides a GitLab merge request URL (e.g. https://gitlab.example.com/.../merge_requests/123) and wants a code review
 ---
 
 # GitLab MR Review
@@ -18,7 +18,7 @@ GitLab Merge Request URL을 입력받아 multi-agent 코드 리뷰를 수행하�
 URL 형식: `https://{host}/{project_path}/-/merge_requests/{iid}`
 
 ```
-https://git.ahha.tf/ahha-ai/ai-agent-project/newpermarket/-/merge_requests/109
+https://gitlab.example.com/myorg/myteam/myproject/-/merge_requests/109
          ^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                   ^^^
          host        project_path (URL-encode: %2F)                         iid
 ```
@@ -35,7 +35,7 @@ Auth header: `PRIVATE-TOKEN: $GITLAB_TOKEN`
 | `GET /projects/{path}/merge_requests/{iid}/notes` | MR 코멘트 |
 | `POST /projects/{path}/merge_requests/{iid}/notes` | 리뷰 코멘트 작성 |
 
-project path는 슬래시를 `%2F`로 URL-encode해서 전달. 예: `ahha-ai%2Fai-agent-project%2Fnewpermarket`
+project path는 슬래시를 `%2F`로 URL-encode해서 전달. 예: `myorg%2Fmyteam%2Fmyproject`
 
 ## Workflow
 
@@ -102,8 +102,8 @@ No issues found. Checked for bugs, security, design, and consistency.
 ## curl Examples
 
 ```bash
-HOST="https://git.ahha.tf"
-PROJECT="ahha-ai%2Fai-agent-project%2Fnewpermarket"
+HOST="https://gitlab.example.com"
+PROJECT="myorg%2Fmyteam%2Fmyproject"
 MR_IID="109"
 
 # MR 정보
