@@ -116,10 +116,19 @@
 
 새 컴퓨터에 이 설정을 적용하거나 기존 설정과 병합할 때는 **`/sync-claude-config`** 스킬을 사용한다. 자세한 절차는 `skills/sync-claude-config/SKILL.md` 참조.
 
-핵심:
-- 리포를 `~/dev/claude-config/` 에 클론한다
-- `/sync-claude-config` 실행 시 대상 머신의 `~/.claude/settings.json` 과 병합
-- 배열(`permissions.allow` 등)은 합집합, 스칼라는 리포가 우선, `env` 는 로컬 유지
+```bash
+git clone git@github.com:thahiti/claude-config.git ~/dev/claude-config
+cd ~/dev/claude-config
+claude        # Claude Code 실행 후
+# /sync-claude-config
+```
+
+cd 만 해도 `.claude/skills/sync-claude-config` 가 프로젝트 레벨 스킬로 자동 발견된다(리포에 심볼릭 링크 포함).
+
+핵심 병합 규칙:
+- 배열(`permissions.allow` 등)은 합집합 + 중복 제거
+- 스칼라는 리포가 우선
+- `env` 는 로컬 유지 (API 키 등 머신 고유값 보호)
 
 ---
 

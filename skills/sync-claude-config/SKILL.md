@@ -17,12 +17,27 @@ description: Use when the user wants to apply the claude-config repo (settings.j
 
 ## Prerequisites
 
-1. 리포가 `~/dev/claude-config/` 에 클론되어 있어야 한다. 없으면:
+1. 리포가 로컬에 클론되어 있어야 한다 (기본 경로 `~/dev/claude-config`). 없으면:
    ```bash
    git clone git@github.com:thahiti/claude-config.git ~/dev/claude-config
    ```
-2. `jq` 설치 필요 (JSON 병합). `brew install jq` 또는 apt 로 설치.
-3. Python 3.8+ 설치 필요 (병합 스크립트).
+2. Python 3.8+ 설치 필요 (병합 스크립트).
+3. **이 스킬을 호출하는 가장 간단한 방법**:
+   ```bash
+   cd ~/dev/claude-config
+   claude
+   # 프롬프트에서: /sync-claude-config
+   ```
+   리포 안의 `.claude/skills/sync-claude-config` 심볼릭 링크 덕분에 clone 직후 별도 설치 없이 프로젝트 레벨 스킬로 발견된다.
+
+## Repo Path Detection
+
+스킬 실행 시 리포 경로는 다음 순서로 찾는다:
+1. 사용자가 인자로 경로를 지정했으면 그 경로
+2. 현재 cwd 의 git 루트가 `thahiti/claude-config` 원격을 가지면 그 경로
+3. `~/dev/claude-config/` (기본값)
+
+어느 것으로 잡혔는지 사용자에게 알려준 뒤 절차를 진행한다.
 
 ## 절차 (반드시 순서대로)
 
