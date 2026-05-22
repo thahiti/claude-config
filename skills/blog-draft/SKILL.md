@@ -35,6 +35,7 @@ description: Use when the user wants to refine a rough markdown draft into a pol
 - 거친 초안 *또는* 여러 출처를 한 파일에 모아 붙여 넣은 콜라주 md 파일 경로
 - 입력 파일은 repo 안/밖 어디에 있어도 무관하다
 - **출력:** worktree 안의 `_posts/YYYY-MM-DD-slug.md` — frontmatter가 완성된 최종 md
+- **slug·날짜 도출:** 잠정 `slug`는 초안의 제목(첫 번째 `# ` 헤딩)을 영문 kebab-case로 변환해 도출하고(한글 제목이면 적절한 영문 slug를 생성), 날짜는 실행일(Asia/Seoul) 기준이다. 이 잠정값으로 브랜치명과 출력 경로를 잡고, frontmatter 기입(7단계) 시 최종 확정한다. `blog-post` 스킬 Step 4의 방식과 동일하다.
 - **연결:** 발행 승인 시 이 경로를 그대로 `/blog-post`에 전달한다
 
 ## Workflow
@@ -83,16 +84,16 @@ digraph blog_draft {
 
 1. **사전 점검** — `gh` 인증 상태와 현재 위치가 `thahiti.github.io` repo인지 확인한다. 미충족 시 안내 후 종료한다.
 2. **워크스페이스 준비** — `git pull`로 `main`을 동기화한 뒤 worktree + 스크래치 브랜치 `draft/<slug>`를 생성한다. 자세한 내용은 `## Workspace` 참조.
-3. **원본 안착 + baseline 커밋** — 입력 파일(초안 또는 콜라주)을 worktree의 최종 경로(`_posts/YYYY-MM-DD-slug.md`)로 복사한 뒤 `draft: original` 커밋을 만든다. **이 커밋 SHA를 baseline 기준점으로 기록**한다 — 이후 모든 누적 diff의 비교 대상이다.
+3. **원본 안착 + baseline 커밋** — 입력 파일(초안 또는 콜라주)을 worktree의 최종 경로(`_posts/YYYY-MM-DD-slug.md`)로 복사한 뒤 `draft: original` 커밋을 만든다. **이 커밋 SHA를 baseline 기준점으로 기록**한다 — 이후 모든 누적 diff의 비교 대상이다. 대상 파일명이 기존 `_posts/*.md`와 충돌하면(실제 포스트를 덮어쓰면 4단계 코퍼스가 오염된다) slug를 조정하거나 사용자에게 확인한다.
 4. **스타일 프로파일 도출** — worktree의 기존 `_posts/*.md`를 전수 정독해 블로그의 톤·매너·구성 관습을 스타일 프로파일로 정리한다. 동시에 관련 주제와 기존 태그/카테고리 체계를 파악한다. 이 프로파일이 진단의 측정자(measuring stick)다.
-5. **진단** — 먼저 입력이 단일 초안인지 다중 출처 콜라주인지 판별한다(`## Multi-Source Synthesis` 참조). 단일 초안이면 5축 루브릭(`## Diagnosis Rubric`)으로 분석해 진단 리포트(`## Diagnosis Report Format`)를, 콜라주면 통합 구조안을 생성한다.
+5. **진단** — 먼저 입력이 단일 초안인지 다중 출처 콜라주인지 판별한다(`## Multi-Source Synthesis` 참조). 단일 초안이면 5축 루브릭(`## Diagnosis Rubric`)으로 분석해 진단 리포트(`## Diagnosis Report Format`)를(워크플로 dot 그래프의 `Build refinement plan` 노드에 해당), 콜라주면 통합 구조안(dot 그래프의 `Build synthesis plan` 노드에 해당)을 생성한다.
 6. **계획 제시 + 승인** — 진단 리포트(또는 통합 구조안)가 곧 변경 계획이다. 사용자에게 제시하고 승인을 받는다. 수정 요청 시 계획을 조정해 다시 제시한다.
-7. **일괄 적용** — 승인된 계획을 적용한다. 콜라주 입력의 첫 라운드는 통합 초안 작성이고, 이후 라운드는 구조 재배치·문장 교정·frontmatter 기입이다. **이번 라운드 전체를 하나의 커밋**으로 생성한다 — 한 리뷰 라운드 = 한 커밋이다.
-8. **리뷰 안내** — 적용 직전에 기록해 둔 SHA를 사용해 명시적 diff 명령을 안내한다:
+7. **일괄 적용** — 라운드를 적용하기 **직전에 현재 `HEAD` SHA를 "라운드 직전 SHA"로 기록**한다 — 첫 라운드에서는 이 값이 baseline SHA(3단계)와 같다. 이어 승인된 계획을 적용한다. 콜라주 입력의 첫 라운드는 통합 초안 작성이고, 이후 라운드는 구조 재배치·문장 교정·frontmatter 기입이다. **이번 라운드 전체를 하나의 커밋**으로 생성한다 — 한 리뷰 라운드 = 한 커밋이다.
+8. **리뷰 안내** — 7단계에서 기록해 둔 "라운드 직전 SHA"를 사용해 명시적 diff 명령을 안내한다:
    - 이번 라운드: `git diff --word-diff <라운드 직전 SHA> HEAD`
    - 누적 변경: `git diff --word-diff <baseline SHA> HEAD`
-9. **Iteration** — 추가 수정 요청 시: 현재 라운드 직전 SHA를 기록 → 적용 → 단일 커밋 → 8단계로 반복한다. 한 라운드 = 한 커밋이므로 각 라운드의 변경을 커밋 단위로 깔끔하게 되짚을 수 있다.
-10. **마무리** — 사용자가 만족하면 "이대로 발행할까요?"로 확인한다. 승인 시 최종 md 경로로 `/blog-post`를 호출하고 worktree·브랜치를 정리한다. 거부 시 worktree를 유지하고 재개 방법을 안내한다.
+9. **Iteration** — 추가 수정 요청 시 7단계로 돌아간다: 새 라운드 직전 SHA를 기록 → 적용 → 단일 커밋 → 8단계로 반복한다. 한 라운드 = 한 커밋이므로 각 라운드의 변경을 커밋 단위로 깔끔하게 되짚을 수 있다.
+10. **마무리** — 사용자가 만족하면 "이대로 발행할까요?"로 확인한다. 승인 시 최종 md 경로로 `/blog-post`를 호출한다. 발행 완료/거부 후 worktree 정리·유지는 `## Workspace`의 정리 규칙을 따른다.
 
 ## Multi-Source Synthesis
 
@@ -120,7 +121,7 @@ digraph blog_draft {
 - 3단계 baseline 커밋 = 원본 콜라주 그대로
 - 6단계 = 통합 구조안 승인
 - 7단계 = 승인된 구조로 통합 초안을 작성해 단일 커밋. `git diff <baseline> HEAD`가 "콜라주 → 정돈된 포스트" 변환 전체를 보여준다
-- 8·9단계 = 이후 라운드에서 통상의 5축 교정으로 다듬기 반복
+- 8·9단계 = 이후 라운드에서 통상의 5축 루브릭으로 교정하며 다듬기 반복
 
 요컨대 **콜라주 입력은 "1라운드 = 통합, 2라운드 이후 = 정련"**, 단일 초안 입력은 "1라운드부터 정련"이다.
 
@@ -131,6 +132,8 @@ digraph blog_draft {
 - worktree 생성 전 `git pull`로 `main`을 동기화한다 — 톤 분석·교차참조가 최신 코퍼스를 보도록 하기 위함이다.
 - 별도 fresh clone을 만들지 않는다 (사본 중복·정리 부담 회피).
 - worktree/브랜치는 **버려지는 스크래치**다. `/blog-post`가 최종 파일을 API로 발행하므로 `main`에 머지하지 않는다.
+  - `draft/<slug>` 브랜치의 커밋(`draft: original`, 각 라운드 커밋)은 `main`에 머지되지 않으므로, CLAUDE.md의 Conventional Commits 규약을 따르지 않아도 된다 — 의도된 예외다.
+- **정리 규칙 (cleanup/keep, 이 절이 단일 출처):**
   - 발행 완료 시: worktree·브랜치를 정리(삭제)한다.
   - 발행 거부 시: worktree를 유지하고 재개 방법을 안내한다.
 
@@ -177,8 +180,8 @@ digraph blog_draft {
 
 - 사용자가 만족하면 **"이대로 발행할까요?"**로 확인한다.
 - 승인 시 worktree 안의 최종 md 경로(`_posts/YYYY-MM-DD-slug.md`)를 그대로 `/blog-post`에 전달해 호출한다.
-- 발행 완료 후 worktree·브랜치를 정리한다.
-- 거부 시 `/blog-post`를 호출하지 않고 worktree를 유지하며 재개 방법을 안내한다.
+- 거부 시 `/blog-post`를 호출하지 않는다.
+- 발행 완료/거부 후 worktree 정리·유지는 `## Workspace`의 정리 규칙을 따른다.
 
 ## Error Handling
 
