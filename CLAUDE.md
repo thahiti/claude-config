@@ -6,9 +6,11 @@
 ## Commit 규칙
 > 프로젝트의 **atomic-commit** 스킬에 상세 정의. Conventional Commits + atomic commit 원칙.
 
+- **커밋 메시지의 제목은 영어로, 본문은 한글로 작성한다.** 예: 제목 `feat(auth): add retry logic on login failure`, 본문은 한글로 상세 설명.
 - **하나의 커밋 = 하나의 논리적 변경**. 한꺼번에 몰아서 커밋 금지.
 - 테스트가 통과한 직후 커밋 (Green → Commit)
 - 위험한 변경을 시도하기 전에 안정 상태를 먼저 커밋
+- **커밋 메시지에 Claude를 co-author로 넣지 말 것.** `Co-Authored-By: Claude ...`, `Claude-Session: ...`, `🤖 Generated with Claude Code` 등 Claude/Anthropic 관련 trailer·서명을 커밋 메시지나 PR 본문에 추가하지 않는다.
 
 ## 브랜치 전략: GitHub Flow
 - `main` 브랜치는 항상 배포 가능한 상태 유지
