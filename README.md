@@ -15,8 +15,8 @@
 ## 새 컴퓨터에서 사용법
 
 ```bash
-git clone git@github.com:thahiti/claude-config.git ~/dev/claude-config
-cd ~/dev/claude-config
+git clone git@github.com:thahiti/claude-config.git ~/claude-config
+cd ~/claude-config
 claude
 ```
 

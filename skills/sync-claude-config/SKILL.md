@@ -7,7 +7,7 @@ description: Use when the user wants to apply the claude-config repo (settings.j
 
 ## Overview
 
-이 스킬은 `~/dev/claude-config/` 리포의 Claude Code 설정을 **현재 컴퓨터의 `~/.claude/`** 에 적용한다. 기존 설정이 있으면 손실 없이 병합한다.
+이 스킬은 `~/claude-config/` 리포의 Claude Code 설정을 **현재 컴퓨터의 `~/.claude/`** 에 적용한다. 기존 설정이 있으면 손실 없이 병합한다.
 
 ## When to Invoke
 
@@ -17,14 +17,14 @@ description: Use when the user wants to apply the claude-config repo (settings.j
 
 ## Prerequisites
 
-1. 리포가 로컬에 클론되어 있어야 한다 (기본 경로 `~/dev/claude-config`). 없으면:
+1. 리포가 로컬에 클론되어 있어야 한다 (기본 경로 `~/claude-config`). 없으면:
    ```bash
-   git clone git@github.com:thahiti/claude-config.git ~/dev/claude-config
+   git clone git@github.com:thahiti/claude-config.git ~/claude-config
    ```
 2. Python 3.8+ 설치 필요 (병합 스크립트).
 3. **이 스킬을 호출하는 가장 간단한 방법**:
    ```bash
-   cd ~/dev/claude-config
+   cd ~/claude-config
    claude
    # 프롬프트에서: /sync-claude-config
    ```
@@ -35,7 +35,7 @@ description: Use when the user wants to apply the claude-config repo (settings.j
 스킬 실행 시 리포 경로는 다음 순서로 찾는다:
 1. 사용자가 인자로 경로를 지정했으면 그 경로
 2. 현재 cwd 의 git 루트가 `thahiti/claude-config` 원격을 가지면 그 경로
-3. `~/dev/claude-config/` (기본값)
+3. `~/claude-config/` (기본값)
 
 어느 것으로 잡혔는지 사용자에게 알려준 뒤 절차를 진행한다.
 
@@ -44,7 +44,7 @@ description: Use when the user wants to apply the claude-config repo (settings.j
 ### 1. 사전 확인
 
 ```bash
-REPO="$HOME/dev/claude-config"
+REPO="$HOME/claude-config"
 TARGET="$HOME/.claude/settings.json"
 
 test -d "$REPO" || { echo "리포가 없습니다. git clone 부터 진행하세요."; exit 1; }

@@ -117,8 +117,8 @@
 새 컴퓨터에 이 설정을 적용하거나 기존 설정과 병합할 때는 **`/sync-claude-config`** 스킬을 사용한다. 자세한 절차는 `skills/sync-claude-config/SKILL.md` 참조.
 
 ```bash
-git clone git@github.com:thahiti/claude-config.git ~/dev/claude-config
-cd ~/dev/claude-config
+git clone git@github.com:thahiti/claude-config.git ~/claude-config
+cd ~/claude-config
 claude        # Claude Code 실행 후
 # /sync-claude-config
 ```

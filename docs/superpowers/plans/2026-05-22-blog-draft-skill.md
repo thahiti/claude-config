@@ -20,9 +20,9 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 
 ## File Structure
 
-- **Create:** `/Users/randy/dev/claude-config/skills/blog-draft/SKILL.md` — 스킬 전체 (단일 파일)
+- **Create:** `/Users/randy/claude-config/skills/blog-draft/SKILL.md` — 스킬 전체 (단일 파일)
 - **Create:** `~/.claude/skills/blog-draft` — 위 디렉터리로의 심볼릭 링크 (repo 밖, 커밋 대상 아님)
-- **Reference only (수정 금지):** `/Users/randy/dev/claude-config/skills/blog-post/SKILL.md` — 포맷·말투 레퍼런스
+- **Reference only (수정 금지):** `/Users/randy/claude-config/skills/blog-post/SKILL.md` — 포맷·말투 레퍼런스
 
 단일 파일 결정 근거: `blog-post` 스킬이 `SKILL.md` 하나로 구성돼 있고, 스펙 분량이 별도 reference 파일로 쪼갤 만큼 크지 않다. 동일 패턴을 유지한다.
 
@@ -39,7 +39,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 - [ ] **Step 1: 브랜치 생성**
 
 ```bash
-cd /Users/randy/dev/claude-config
+cd /Users/randy/claude-config
 git checkout -b feat/blog-draft-skill
 ```
 
@@ -70,18 +70,18 @@ EOF
 이 태스크는 `superpowers:writing-skills` 스킬을 사용해 수행한다. 내용 출처는 스펙 문서다.
 
 **Files:**
-- Create: `/Users/randy/dev/claude-config/skills/blog-draft/SKILL.md`
+- Create: `/Users/randy/claude-config/skills/blog-draft/SKILL.md`
 
 - [ ] **Step 1: 레퍼런스 정독**
 
 다음 두 파일을 Read 한다:
-- `/Users/randy/dev/claude-config/skills/blog-post/SKILL.md` — 포맷, 말투, dot graph 스타일, 섹션 구성
-- `/Users/randy/dev/claude-config/docs/superpowers/specs/2026-05-22-blog-draft-skill-design.md` — 내용 출처
+- `/Users/randy/claude-config/skills/blog-post/SKILL.md` — 포맷, 말투, dot graph 스타일, 섹션 구성
+- `/Users/randy/claude-config/docs/superpowers/specs/2026-05-22-blog-draft-skill-design.md` — 내용 출처
 
 - [ ] **Step 2: 스킬 디렉터리 생성**
 
 ```bash
-mkdir -p /Users/randy/dev/claude-config/skills/blog-draft
+mkdir -p /Users/randy/claude-config/skills/blog-draft
 ```
 
 - [ ] **Step 3: SKILL.md frontmatter 작성**
@@ -165,7 +165,7 @@ digraph blog_draft {
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /Users/randy/dev/claude-config
+cd /Users/randy/claude-config
 git add skills/blog-draft/SKILL.md
 git commit -m "$(cat <<'EOF'
 feat(blog-draft): add blog-draft skill for refining drafts before publishing
@@ -185,7 +185,7 @@ EOF
 - [ ] **Step 1: 심볼릭 링크 생성**
 
 ```bash
-ln -s /Users/randy/dev/claude-config/skills/blog-draft ~/.claude/skills/blog-draft
+ln -s /Users/randy/claude-config/skills/blog-draft ~/.claude/skills/blog-draft
 ```
 
 - [ ] **Step 2: 링크 확인**
@@ -194,7 +194,7 @@ ln -s /Users/randy/dev/claude-config/skills/blog-draft ~/.claude/skills/blog-dra
 ls -la ~/.claude/skills/blog-draft
 ```
 
-Expected: `~/.claude/skills/blog-draft -> /Users/randy/dev/claude-config/skills/blog-draft`
+Expected: `~/.claude/skills/blog-draft -> /Users/randy/claude-config/skills/blog-draft`
 
 - [ ] **Step 3: frontmatter 유효성 확인**
 
@@ -230,7 +230,7 @@ Expected: 1행 `---`, `name: blog-draft`, `description:` 한 줄, 닫는 `---`. 
 수정이 있었다면:
 
 ```bash
-cd /Users/randy/dev/claude-config
+cd /Users/randy/claude-config
 git add skills/blog-draft/SKILL.md
 git commit -m "$(cat <<'EOF'
 fix(blog-draft): align SKILL.md with design spec
