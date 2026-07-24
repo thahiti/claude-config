@@ -130,11 +130,13 @@ md 본문에서 로컬 이미지 참조를 탐지한다:
 
 ```bash
 # 이미지를 base64로 인코딩하여 업로드
-base64 -i <local-image-path> | gh api \
+# 주의: stdin을 읽으려면 -F(--field, @- 지원)를 써야 한다. -f(--raw-field)는 "@-"를 리터럴 문자열로 보내 422 에러가 난다.
+# 주의: macOS base64는 줄바꿈을 삽입하므로 `tr -d '\n'`으로 제거해야 한다.
+base64 -i <local-image-path> | tr -d '\n' | gh api \
   repos/thahiti/thahiti.github.io/contents/assets/img/posts/{slug}/{filename} \
   --method PUT \
   -f message="Add image: {filename}" \
-  -f content=@- \
+  -F content=@- \
   -f branch=main
 ```
 
@@ -142,11 +144,12 @@ base64 -i <local-image-path> | gh api \
 
 ```bash
 # md 파일을 base64로 인코딩하여 업로드
-base64 -i <prepared-md-path> | gh api \
+# 이미지 업로드와 동일하게 `tr -d '\n'` + `-F content=@-`를 사용한다.
+base64 -i <prepared-md-path> | tr -d '\n' | gh api \
   repos/thahiti/thahiti.github.io/contents/_posts/{post-filename} \
   --method PUT \
   -f message="Add post: {title}" \
-  -f content=@- \
+  -F content=@- \
   -f branch=main
 ```
 
@@ -171,3 +174,4 @@ base64 -i <prepared-md-path> | gh api \
 | `gh` 미인증 | `gh auth login` 실행 안내 |
 | 동일 파일명 존재 | 덮어쓸지 사용자 확인 |
 | API rate limit | 재시도 안내 |
+| `content is not valid Base64` (422) | `-f content=@-` → `-F content=@-`로 교정, base64 출력에 `tr -d '\n'` 적용 (macOS) |
