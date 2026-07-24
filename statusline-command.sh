@@ -4,6 +4,9 @@ input=$(cat)
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
 model=$(echo "$input" | jq -r '.model.display_name // empty')
 remaining=$(echo "$input" | jq -r '.context_window.remaining_percentage // empty')
+# Claude Code 2.1+ stdin: .rate_limits.{five_hour,seven_day}.used_percentage
+# (Claude.ai 구독자에 한해, 최초 API 응답 이후부터 채워짐)
+usage_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
 
 # Current directory (shorten home to ~)
 home="$HOME"
@@ -20,46 +23,15 @@ if git -C "${cwd:-$(pwd)}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
            || git -C "${cwd:-$(pwd)}" rev-parse --short HEAD 2>/dev/null)
 fi
 
-# ── ccusage: 현재 활성 블록 비용 & 7일 누적 비용 (병렬 실행) ──────────────
+# ── ccusage: 7일 누적 비용 ────────────────────────────────────────────────
 CCUSAGE_BIN="npx --yes ccusage@latest"
-TMP_BLOCK=$(mktemp)
-TMP_WEEK=$(mktemp)
-
-# 병렬로 두 쿼리 실행
-$CCUSAGE_BIN blocks --active --json >"$TMP_BLOCK" 2>/dev/null &
-PID_BLOCK=$!
-$CCUSAGE_BIN daily --since 7d --json >"$TMP_WEEK" 2>/dev/null &
-PID_WEEK=$!
-
-wait $PID_BLOCK $PID_WEEK
-
-# 현재 활성 블록 비용 파싱
-session_cost=""
-if [ -s "$TMP_BLOCK" ]; then
-  # blocks --active --json: { blocks: [ { totalCost: N, ... } ] }
-  session_cost=$(jq -r '
-    if type == "array" then
-      (map(.totalCost // 0) | add // 0)
-    elif .blocks then
-      (.blocks | map(.totalCost // 0) | add // 0)
-    else empty end
-  ' "$TMP_BLOCK" 2>/dev/null)
-fi
-
-# 7일 누적 비용 파싱
-week_cost=""
-if [ -s "$TMP_WEEK" ]; then
-  # daily --since 7d --json: { daily: [ { cost: N, ... } ] } 또는 배열
-  week_cost=$(jq -r '
-    if type == "array" then
-      (map(.cost // .totalCost // 0) | add // 0)
-    elif .daily then
-      (.daily | map(.cost // .totalCost // 0) | add // 0)
-    else empty end
-  ' "$TMP_WEEK" 2>/dev/null)
-fi
-
-rm -f "$TMP_BLOCK" "$TMP_WEEK"
+week_cost=$($CCUSAGE_BIN daily --since 7d --json 2>/dev/null | jq -r '
+  if type == "array" then
+    (map(.cost // .totalCost // 0) | add // 0)
+  elif .daily then
+    (.daily | map(.cost // .totalCost // 0) | add // 0)
+  else empty end
+' 2>/dev/null)
 
 # ── 출력 ──────────────────────────────────────────────────────────────────────
 
@@ -90,10 +62,18 @@ if [ -n "$remaining" ]; then
   printf " ${color}ctx:%d%%\033[0m" "$pct"
 fi
 
-# 현재 세션(활성 블록) 비용
-if [ -n "$session_cost" ] && [ "$session_cost" != "null" ] && [ "$session_cost" != "0" ]; then
-  formatted=$(printf '%.4f' "$session_cost" 2>/dev/null)
-  printf ' \033[33m세션:$%s\033[0m' "$formatted"
+# 현재 5시간 블록 한도 대비 사용률
+if [ -n "$usage_pct" ] && [ "$usage_pct" != "null" ]; then
+  upct=$(printf '%.0f' "$usage_pct" 2>/dev/null)
+  # Color: green < 50%, yellow < 80%, red >= 80%
+  if [ "$upct" -lt 50 ]; then
+    ucolor='\033[32m'
+  elif [ "$upct" -lt 80 ]; then
+    ucolor='\033[33m'
+  else
+    ucolor='\033[31m'
+  fi
+  printf " ${ucolor}usage:%d%%\033[0m" "$upct"
 fi
 
 # 7일 누적 비용
