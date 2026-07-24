@@ -1,18 +1,124 @@
 ---
 name: clickup-task
-description: Use when the user explicitly invokes /clickup-task to generate a ClickUp task description from provided arguments and copy it to clipboard
+description: Use when the user invokes /clickup-task to create a ClickUp task — interactively gather the category list, task title, description, dates, priority, time estimate, and assignee, then create it via the ClickUp API and add it to the current sprint
 ---
 # ClickUp Task Creation Skill
 
 ## Overview
 
 ClickUp API를 사용하여 태스크를 생성하는 Claude Code 스킬.
-개발 작업 분석 후 구조화된 태스크를 ClickUp 리스트에 자동 생성한다.
+사용자에게 필요한 필드를 **인터랙티브하게 질문**하면서 구조화된 태스크를
+ClickUp 리스트에 생성한다.
 
 ## Prerequisites
 
 - 환경변수 `CLICKUP_API_TOKEN`: Personal API Token (`pk_` 접두사)
-- 환경변수 `CLICKUP_LIST_ID`: 태스크를 생성할 기본 List ID
+- 대상 Space: **AI-Agent** (`space_id` = `90183489630`)
+- 태스크 생성 List는 [카테고리](#category--current-sprint) 중에서 **사용자에게 질문**해 결정
+- 환경변수 `CLICKUP_LIST_ID`는 무시 가능 (카테고리 선택이 우선)
+
+## Interactive Workflow (핵심)
+
+스킬이 실행되면 아래 순서로 필드를 채운다. **기본값이 있는 항목은 기본값을
+적용하고, "물어보기"로 표시된 항목은 사용자에게 질문한다.** 한 번에 모든 질문을
+던지기보다, 추출 가능한 값은 먼저 채워서 사용자에게 제시하고 빠진 값만 묻는다.
+
+| 항목 | 처리 방식 | 기본값 / 동작 |
+|------|-----------|---------------|
+| **카테고리 (생성 List)** | **물어보기** | 8개 카테고리 중 하나를 질문 ([Category & Current Sprint](#category--current-sprint)). 이 List가 태스크의 home List가 된다 |
+| **제목 (name)** | 추출 또는 붙여넣기 | 사용자의 설명/붙여넣은 내용에서 적절히 추출. `[카테고리] 작업 내용` 형식으로 정리 |
+| **내용 (markdown_description)** | 추출 또는 붙여넣기 | 사용자의 설명에서 [Task Description Template](#task-description-template)에 맞춰 구성. 붙여넣은 내용이 있으면 그대로 활용 |
+| **start date** | 기본값 | **오늘** (`start_date_time: false`) |
+| **due date** | 물어보기 | 사용자에게 마감일을 질문. 답이 없으면 비워둠 |
+| **priority** | 기본값 | **Normal (3)**. 사용자가 명시하면 변경 |
+| **time estimate** | 물어보기 | 사용자에게 예상 소요시간을 질문 ([Time Estimate Guidelines](#time-estimate-guidelines) 참고). 답이 없으면 비워둠 |
+| **assignee** | 기본값 + 자동 조회 | **randy@ahha.ai**. 아래 [Assignee Resolution](#assignee-resolution)으로 user ID를 조회해 사용 |
+| **현재 스프린트** | **항상 포함** | 생성 후 현재 스프린트 List에 추가 ([Category & Current Sprint](#category--current-sprint)). 별도 질문 없음 |
+
+### 진행 절차
+
+1. **카테고리**를 사용자에게 질문한다 (8개 중 하나).
+2. 사용자의 설명이나 붙여넣은 텍스트에서 **제목**과 **내용**을 추출한다.
+3. **due date**와 **time estimate**를 사용자에게 질문한다 (한 번에 묶어서 물어도 됨).
+4. start date(오늘), priority(Normal), assignee(randy@ahha.ai)는 기본값으로 채운다.
+5. 구성된 태스크 요약을 보여주고, [Assignee Resolution](#assignee-resolution)으로
+   assignee user ID를 조회한 뒤 선택한 카테고리 List에 [Create Task](#example-curl) API로 생성한다.
+6. **항상** 현재 스프린트 List를 동적으로 계산해 생성된 태스크를 거기에도 추가한다.
+7. 생성된 태스크 ID와 URL을 반환한다.
+
+### Assignee Resolution
+
+`assignees` 필드는 숫자 user ID 배열이 필요하다. 이메일(`randy@ahha.ai`)을
+List 멤버 조회 API로 user ID로 변환한다.
+
+```bash
+# List 멤버 중 randy@ahha.ai 의 user id 조회
+curl -s "https://api.clickup.com/api/v2/list/${CLICKUP_LIST_ID}/member" \
+  -H "Authorization: ${CLICKUP_API_TOKEN}" \
+  | python3 -c "import sys,json; m=json.load(sys.stdin)['members']; print(next(u['id'] for u in m if u['email']=='randy@ahha.ai'))"
+```
+
+조회된 ID를 `assignees: [<id>]`로 사용한다. 이메일이 멤버 목록에 없으면 사용자에게 알린다.
+
+### Date 계산 (오늘 start date)
+
+`start_date`는 Unix timestamp(밀리초)다. 오늘 자정 기준 값:
+
+```bash
+# macOS: 오늘 00:00:00 의 밀리초 timestamp
+echo "$(date -j -f '%Y-%m-%d %H:%M:%S' "$(date +%Y-%m-%d) 00:00:00" +%s)000"
+```
+
+due date도 동일하게 사용자가 지정한 날짜를 밀리초 timestamp로 변환한다.
+
+## Category & Current Sprint
+
+태스크는 **카테고리 List**에 생성하고, **항상 현재 스프린트 List에도 추가**한다
+(ClickUp의 Tasks in Multiple Lists 기능). 카테고리 List가 home List가 되고,
+현재 스프린트는 추가 location이 된다.
+
+### 카테고리 List (AI-Agent Space, folderless)
+
+사용자에게 아래 중 하나를 질문한다:
+
+| 카테고리 | List ID |
+|----------|---------|
+| Frontend | `901806401325` |
+| Agent | `901806401344` |
+| Research | `901806401355` |
+| Backend | `901806400968` |
+| Issue | `901807901811` |
+| ETC | `901808383828` |
+| 기획/디자인 | `901810165312` |
+| 프로젝트 | `901811891844` |
+
+> ID가 바뀌었거나 카테고리가 추가됐으면 갱신:
+> `curl -s "https://api.clickup.com/api/v2/space/90183489630/list?archived=false" -H "Authorization: ${CLICKUP_API_TOKEN}"`
+
+### 현재 스프린트 (동적 계산)
+
+Sprint Folder(`90184157607`) 안의 스프린트 List 중 **오늘이 start_date ~ due_date
+범위에 드는 것**이 현재 스프린트다. 스프린트는 2주마다 바뀌므로 매번 동적으로 계산한다.
+
+```bash
+SPRINT_FOLDER=90184157607
+NOW="$(date +%s)000"
+SPRINT_LIST_ID="$(curl -s "https://api.clickup.com/api/v2/folder/${SPRINT_FOLDER}/list?archived=false" \
+  -H "Authorization: ${CLICKUP_API_TOKEN}" \
+  | python3 -c "import sys,json; now=int('${NOW}'); d=json.load(sys.stdin); print(next(l['id'] for l in d['lists'] if l.get('start_date') and l.get('due_date') and int(l['start_date'])<=now<=int(l['due_date'])))")"
+echo "현재 스프린트 List: ${SPRINT_LIST_ID}"
+```
+
+### 스프린트에 태스크 추가
+
+카테고리 List에 태스크를 생성한 뒤, 반환된 `task_id`를 현재 스프린트 List에 추가한다:
+
+```bash
+curl -s -X POST "https://api.clickup.com/api/v2/list/${SPRINT_LIST_ID}/task/${TASK_ID}" \
+  -H "Authorization: ${CLICKUP_API_TOKEN}" -H "Content-Type: application/json" -d '{}'
+```
+
+> 동작 전제: 해당 Space에 **Tasks in Multiple Lists** ClickApp이 활성화돼 있어야 한다 (현재 활성 상태 확인됨).
 
 ## API Reference
 
@@ -39,6 +145,8 @@ Content-Type: application/json
 | `markdown_description` | string | 마크다운 형식의 상세 설명 |
 | `status` | string | 리스트에 존재하는 상태값 (예: `to do`, `in progress`) |
 | `priority` | integer | 1=Urgent, 2=High, 3=Normal, 4=Low |
+| `start_date` | integer | Unix timestamp (밀리초). 기본값 오늘 |
+| `start_date_time` | boolean | 시간 포함 여부 (날짜만이면 `false`) |
 | `due_date` | integer | Unix timestamp (밀리초) |
 | `due_date_time` | boolean | 시간 포함 여부 |
 | `time_estimate` | integer | 예상 소요시간 (밀리초) |
@@ -110,18 +218,72 @@ Content-Type: application/json
 
 ## Example: curl
 
+인터랙티브하게 수집한 값으로 ① 선택한 카테고리 List에 태스크를 생성하고
+② 현재 스프린트 List에 추가하는 전체 흐름이다. 기본값(start_date=오늘,
+priority=3 Normal, assignee=randy@ahha.ai)과 사용자가 답한 카테고리 / due date /
+time estimate 를 반영한다.
+
+> **반드시 아래 안전 패턴을 따른다** ([Common Mistakes](#common-mistakes) 참고):
+> - payload JSON은 셸 here-string으로 만들지 말고 **`python3` + `json.dumps`** 로 생성한다
+>   (한글·개행·따옴표 이스케이프 안전).
+> - 응답에서 `id`를 뽑을 때 `echo "$RESP" | python3` 를 쓰지 않는다. zsh `echo` 가
+>   응답 JSON의 `\n` 을 실제 개행으로 바꿔 파싱이 깨진다. **응답은 파일로 받아** 파싱한다.
+
 ```bash
-curl -X POST "https://api.clickup.com/api/v2/list/${CLICKUP_LIST_ID}/task" \
+# --- 입력 (인터랙티브 수집 결과) ---
+export LIST_ID=901806401355                                  # 사용자가 선택한 카테고리 (예: Research)
+export TASK_NAME="[Research] 한국형 ARPA-H 프로젝트 제안서 파악"
+export MD="## 목적
+- ...
+
+## 작업 내용
+- [ ] ...
+"                                                            # markdown_description (개행/한글 자유롭게)
+export PRIORITY=3                                            # 기본 Normal
+export START_MS="$(date -j -f '%Y-%m-%d %H:%M:%S' "$(date +%Y-%m-%d) 00:00:00" +%s)000"  # 오늘
+export DUE_MS=""                                            # 없으면 빈 값 (필드 생략됨)
+export TIME_EST_MS=10800000                                 # 3h. 없으면 빈 값
+
+# assignee 이메일 → user ID
+export ASSIGNEE_ID="$(curl -s "https://api.clickup.com/api/v2/list/${LIST_ID}/member" \
   -H "Authorization: ${CLICKUP_API_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "[Feature] WebSocket 실시간 알림 구현",
-    "markdown_description": "## 목적\n- 사용자에게 실시간 알림을 전달하여 UX 개선\n\n## 작업 내용\n- [ ] WebSocket 서버 엔드포인트 구현\n- [ ] 클라이언트 연결 관리 (heartbeat, reconnect)\n- [ ] 알림 이벤트 발행 서비스 구현\n- [ ] 프론트엔드 알림 컴포넌트 연동\n\n## 기술 스펙\n- **영향 범위**: `ara-chat` 서비스, 프론트엔드 알림 모듈\n- **기술 스택**: FastAPI WebSocket, React\n- **의존성**: 사용자 인증 토큰 검증 로직 완료 필요\n\n## 완료 조건\n- [ ] WebSocket 연결/해제 정상 동작\n- [ ] 알림 수신 테스트 통과\n- [ ] 동시 접속 100명 부하 테스트 통과",
+  | python3 -c "import sys,json; m=json.load(sys.stdin)['members']; print(next(u['id'] for u in m if u['email']=='randy@ahha.ai'))")"
+
+# payload 생성 (json.dumps — 빈 due/time 은 자동 생략)
+PAYLOAD="$(python3 - <<'PY'
+import json, os
+body = {
+    "name": os.environ["TASK_NAME"],
+    "markdown_description": os.environ["MD"],
     "status": "to do",
-    "priority": 2,
-    "tags": ["backend", "websocket"],
-    "time_estimate": 28800000
-  }'
+    "priority": int(os.environ["PRIORITY"]),
+    "start_date": int(os.environ["START_MS"]),
+    "start_date_time": False,
+    "assignees": [int(os.environ["ASSIGNEE_ID"])],
+}
+if os.environ.get("DUE_MS"):
+    body["due_date"] = int(os.environ["DUE_MS"]); body["due_date_time"] = False
+if os.environ.get("TIME_EST_MS"):
+    body["time_estimate"] = int(os.environ["TIME_EST_MS"])
+print(json.dumps(body, ensure_ascii=False))
+PY
+)"
+
+# ① 카테고리 List에 태스크 생성 — 응답을 파일로 받아 파싱 (echo 사용 금지)
+RESP_FILE="$(mktemp)"
+curl -s -X POST "https://api.clickup.com/api/v2/list/${LIST_ID}/task" \
+  -H "Authorization: ${CLICKUP_API_TOKEN}" -H "Content-Type: application/json" \
+  -d "$PAYLOAD" -o "$RESP_FILE"
+TASK_ID="$(python3 -c "import json,sys; print(json.load(open('$RESP_FILE'))['id'])")"
+echo "created: $TASK_ID"
+
+# ② 현재 스프린트 List 계산 후 태스크 추가 (위 Category & Current Sprint 참고)
+SPRINT_LIST_ID="$(curl -s "https://api.clickup.com/api/v2/folder/90184157607/list?archived=false" \
+  -H "Authorization: ${CLICKUP_API_TOKEN}" \
+  | python3 -c "import sys,json; now=int('$(date +%s)000'); d=json.load(sys.stdin); print(next(l['id'] for l in d['lists'] if l.get('start_date') and l.get('due_date') and int(l['start_date'])<=now<=int(l['due_date'])))")"
+curl -s -o /dev/null -w "add-to-sprint HTTP %{http_code}\n" -X POST \
+  "https://api.clickup.com/api/v2/list/${SPRINT_LIST_ID}/task/${TASK_ID}" \
+  -H "Authorization: ${CLICKUP_API_TOKEN}" -H "Content-Type: application/json" -d '{}'
 ```
 
 ## Subtask Decomposition
@@ -135,9 +297,16 @@ curl -X POST "https://api.clickup.com/api/v2/list/${CLICKUP_LIST_ID}/task" \
 
 ## Workflow
 
-1. 사용자가 작업 내용을 설명하면 태스크 구조를 제안
-2. 사용자 확인 후 API 호출로 태스크 생성
-3. 생성된 태스크 ID와 URL을 반환
+전체 인터랙티브 진행 순서는 상단 [Interactive Workflow](#interactive-workflow-핵심)를
+따른다. 요약하면:
+
+1. 카테고리(생성 List)를 질문
+2. 사용자 설명/붙여넣기에서 제목·내용을 추출
+3. due date, time estimate를 질문
+4. start date(오늘)·priority(Normal)·assignee(randy@ahha.ai) 기본값 적용
+5. assignee user ID 조회 후 선택한 카테고리 List에 태스크 생성
+6. 현재 스프린트 List를 동적 계산해 태스크를 추가 (항상)
+7. 생성된 태스크 ID와 URL을 반환
 
 ## Error Handling
 
@@ -147,6 +316,16 @@ curl -X POST "https://api.clickup.com/api/v2/list/${CLICKUP_LIST_ID}/task" \
 | 404 | List ID 없음 | List ID 확인 |
 | 429 | Rate limit (100/min) | 재시도 대기 |
 | 500 | 서버 오류 | 재시도 |
+
+## Common Mistakes
+
+| 증상 | 원인 | 해결 |
+|------|------|------|
+| `JSONDecodeError: Invalid control character` (응답 파싱 시) | zsh `echo "$RESP"` 가 응답 JSON의 `\n` 을 실제 개행으로 바꿔 JSON이 깨짐 | 응답을 `-o "$RESP_FILE"` 로 **파일에 받아** 파싱. `echo` 대신 `printf '%s'` 도 가능 |
+| `KeyError: 'id'` / 빈 `TASK_ID` | 태스크 생성이 실패했는데 그대로 진행 | 생성 응답에 `id` 가 없으면(=에러 응답) 멈추고 응답 본문 확인 |
+| `add-to-sprint HTTP 400` | `TASK_ID` 가 비어서 잘못된 URL 로 호출 | 위 두 문제 먼저 해결. ID 확보 후 스프린트 추가 |
+| 한글/따옴표/개행으로 payload 깨짐 | 셸 here-string 으로 JSON 을 수기 작성 | `python3` + `json.dumps(..., ensure_ascii=False)` 로 생성 |
+| 생성 실패로 보였는데 태스크가 만들어져 있음 | 생성은 성공, 후처리(파싱)만 실패 | **재시도 전** 카테고리 List 에서 동일 제목 태스크 존재 여부 확인 (중복 방지) |
 
 ## Notes
 
