@@ -63,7 +63,7 @@ List 멤버 조회 API로 user ID로 변환한다.
 
 ```bash
 # List 멤버 중 randy@ahha.ai 의 user id 조회
-curl -s "https://api.clickup.com/api/v2/list/${CLICKUP_LIST_ID}/member" \
+curl -s "https://api.clickup.com/api/v2/list/${LIST_ID}/member" \
   -H "Authorization: ${CLICKUP_API_TOKEN}" \
   | python3 -c "import sys,json; m=json.load(sys.stdin)['members']; print(next(u['id'] for u in m if u['email']=='randy@ahha.ai'))"
 ```
@@ -111,19 +111,24 @@ Folder 도 Space 에서 찾는다. 이름에 `sprint` 가 들어가는 Folder �
 여러 개면 사용자에게 묻는다.
 
 ```bash
-SPRINT_FOLDER="$(curl -s "https://api.clickup.com/api/v2/space/${CLICKUP_SPACE_ID}/folder?archived=false" \
+# 이름에 sprint 가 들어가는 Folder 를 모두 뽑는다. 하나면 그대로 쓰고,
+# 여러 개면 목록만 출력하고 멈춰 사용자에게 고르게 한다.
+curl -s "https://api.clickup.com/api/v2/space/${CLICKUP_SPACE_ID}/folder?archived=false" \
   -H "Authorization: ${CLICKUP_API_TOKEN}" \
-  | python3 -c "import sys,json; print(next(f['id'] for f in json.load(sys.stdin)['folders'] if 'sprint' in f['name'].lower()))")"
+  | python3 -c "import sys,json; [print(f['id'], f['name']) for f in json.load(sys.stdin)['folders'] if 'sprint' in f['name'].lower()]"
 
+SPRINT_FOLDER="<위에서 정한 Folder ID>"
+
+# 해당하는 스프린트가 없으면 빈 문자열이 나온다. 예외로 죽지 않게 기본값을 준다.
 NOW="$(date +%s)000"
 SPRINT_LIST_ID="$(curl -s "https://api.clickup.com/api/v2/folder/${SPRINT_FOLDER}/list?archived=false" \
   -H "Authorization: ${CLICKUP_API_TOKEN}" \
-  | python3 -c "import sys,json; now=int('${NOW}'); d=json.load(sys.stdin); print(next(l['id'] for l in d['lists'] if l.get('start_date') and l.get('due_date') and int(l['start_date'])<=now<=int(l['due_date'])))")"
-echo "현재 스프린트 List: ${SPRINT_LIST_ID}"
+  | python3 -c "import sys,json; now=int('${NOW}'); d=json.load(sys.stdin); print(next((l['id'] for l in d['lists'] if l.get('start_date') and l.get('due_date') and int(l['start_date'])<=now<=int(l['due_date'])), ''))")"
+echo "현재 스프린트 List: ${SPRINT_LIST_ID:-없음}"
 ```
 
-현재 날짜에 해당하는 스프린트가 없으면 `StopIteration` 이 난다. 스프린트가 아직
-만들어지지 않았다는 뜻이므로, 태스크는 카테고리 List 에만 만들고 스프린트 추가는 건너뛴다.
+`SPRINT_LIST_ID` 가 비면 현재 날짜에 걸치는 스프린트가 아직 만들어지지 않은 것이다.
+그때는 태스크를 카테고리 List 에만 만들고 스프린트 추가를 건너뛴다.
 
 ### 스프린트에 태스크 추가
 
@@ -295,12 +300,20 @@ TASK_ID="$(python3 -c "import json,sys; print(json.load(open('$RESP_FILE'))['id'
 echo "created: $TASK_ID"
 
 # ② 현재 스프린트 List 계산 후 태스크 추가 (위 Category & Current Sprint 참고)
+# SPRINT_FOLDER 는 앞 절에서 정한 값이다. 이 블록만 따로 실행할 때도 필요하다.
+: "${SPRINT_FOLDER:?앞 절의 Folder 조회로 값을 먼저 정하세요}"
 SPRINT_LIST_ID="$(curl -s "https://api.clickup.com/api/v2/folder/${SPRINT_FOLDER}/list?archived=false" \
   -H "Authorization: ${CLICKUP_API_TOKEN}" \
-  | python3 -c "import sys,json; now=int('$(date +%s)000'); d=json.load(sys.stdin); print(next(l['id'] for l in d['lists'] if l.get('start_date') and l.get('due_date') and int(l['start_date'])<=now<=int(l['due_date'])))")"
-curl -s -o /dev/null -w "add-to-sprint HTTP %{http_code}\n" -X POST \
-  "https://api.clickup.com/api/v2/list/${SPRINT_LIST_ID}/task/${TASK_ID}" \
-  -H "Authorization: ${CLICKUP_API_TOKEN}" -H "Content-Type: application/json" -d '{}'
+  | python3 -c "import sys,json; now=int('$(date +%s)000'); d=json.load(sys.stdin); print(next((l['id'] for l in d['lists'] if l.get('start_date') and l.get('due_date') and int(l['start_date'])<=now<=int(l['due_date'])), ''))")"
+
+# 스프린트가 없으면 태스크는 이미 생성됐으므로 여기서 조용히 끝낸다.
+if [ -n "$SPRINT_LIST_ID" ]; then
+  curl -s -o /dev/null -w "add-to-sprint HTTP %{http_code}\n" -X POST \
+    "https://api.clickup.com/api/v2/list/${SPRINT_LIST_ID}/task/${TASK_ID}" \
+    -H "Authorization: ${CLICKUP_API_TOKEN}" -H "Content-Type: application/json" -d '{}'
+else
+  echo "현재 스프린트 없음 — 카테고리 List 에만 생성됨: $TASK_ID"
+fi
 ```
 
 ## Subtask Decomposition
