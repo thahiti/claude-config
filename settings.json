@@ -73,6 +73,20 @@
   },
   "model": "opus",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=$(cat)\ncmd=$(printf '%s' \"$d\" | jq -r '.tool_input.command // \"\"')\ncase \"$cmd\" in *\"git commit\"*) ;; *) exit 0 ;; esac\n\nif printf '%s' \"$cmd\" | grep -qiE 'co-authored-by:[[:space:]]*claude|claude-session:|generated with .{0,6}claude code'; then\n  echo \"커밋 메시지에 Claude 서명이 있습니다. CLAUDE.md 규칙이므로 해당 trailer 를 지우고 다시 실행하세요.\" >&2\n  exit 2\nfi\n\nwd=$(printf '%s' \"$d\" | jq -r '.cwd // \".\"')\nbad=$(git -C \"$wd\" diff --cached --name-only 2>/dev/null \\\n      | grep -E '(^|/)\\.env($|\\.)|(^|/)(node_modules|\\.build|DerivedData|__pycache__)/|\\.pyc$' \\\n      | grep -vE '(^|/)\\.env\\.(example|sample|template|dist)$' || true)\nif [ -n \"$bad\" ]; then\n  echo \"커밋 금지 대상이 스테이징돼 있습니다. git restore --staged 로 빼고 다시 실행하세요:\" >&2\n  printf '%s\\n' \"$bad\" >&2\n  exit 2\nfi\nexit 0",
+            "if": "Bash(git commit *)",
+            "timeout": 15,
+            "statusMessage": "커밋 게이트 확인 중..."
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Bash",
