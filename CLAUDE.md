@@ -1,75 +1,41 @@
-# General Principles
-- 한글 작성시 한국 사람이 사용하지 않을 것 같은 기호(ex · ;) 사용 금지
-- 답변이나 문서에 이모지 사용 금지
-- 명시적으로 코딩하라고 하지 않은 경우 코딩하지 말고 설명만 해줘
-- 간단한 코드를 작성하는게 도움이 되는 경우 10줄 내외로 짧게 작성해줘
-- 자세히 설명해줘, 깊게 조사해줘 등의 지시가 없는 경우 한 페이지 내로 답변을 작성해줘
-- 불필요한 인사말이나 감탄사 없이 직접적으로 답변해줘
-- 확실하지 않은 정보는 추측하지 말고 모른다고 하거나 검색해줘
+# claude-config
 
-# Git Workflow
+개인 Claude Code 환경의 진실 원천(source of truth) 리포다.
 
-## Commit 규칙
-> 프로젝트의 **atomic-commit** 스킬에 상세 정의. Conventional Commits + atomic commit 원칙.
+일반 작업 지침은 이 파일에 두지 않는다. 문체, 설명 방식, 코딩 표준, Git 규칙은
+`dot-claude/CLAUDE.md` 한 곳에만 있고, 그 파일이 `~/.claude/CLAUDE.md` 로 배포되어
+모든 프로젝트에 적용된다. 여기에는 이 리포를 다룰 때만 필요한 규칙을 적는다.
 
-- **커밋 메시지의 제목은 영어로, 본문은 한글로 작성한다.** 예: 제목 `feat(auth): add retry logic on login failure`, 본문은 한글로 상세 설명.
-- **하나의 커밋 = 하나의 논리적 변경**. 한꺼번에 몰아서 커밋 금지.
-- 테스트가 통과한 직후 커밋 (Green → Commit)
-- 위험한 변경을 시도하기 전에 안정 상태를 먼저 커밋
-- **커밋 메시지에 Claude를 co-author로 넣지 말 것.** `Co-Authored-By: Claude ...`, `Claude-Session: ...`, `🤖 Generated with Claude Code` 등 Claude/Anthropic 관련 trailer나 서명을 커밋 메시지나 PR 본문에 추가하지 않는다.
+## 디렉토리 구조
 
-## 브랜치 전략: GitHub Flow
-- `main` 브랜치는 항상 배포 가능한 상태 유지
-- 기능 개발은 feature 브랜치에서 진행
-- 브랜치 수명: 최대 1~2일 (길어지면 작은 PR로 분리)
-- 브랜치 네이밍: `feat/기능명`, `fix/버그명`, `test/테스트명`, `chore/작업명`
-- main으로 머지 시 squash-merge 또는 rebase로 히스토리를 깔끔하게 유지
-- 머지 후 feature 브랜치 삭제
+| 경로 | 배포 대상 | 설명 |
+|---|---|---|
+| `dot-claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | 전역 개인 지침 |
+| `dot-claude/rules/` | `~/.claude/rules/` | 상황별 규칙 파일 |
+| `skills/` | `~/.claude/skills/` | 개인 스킬 |
+| `settings.json` | `~/.claude/settings.json` | 병합 배포 (링크 아님) |
+| `statusline-command.sh` | `~/.claude/statusline-command.sh` | 상태라인 |
 
-## 절대 커밋하지 않을 것
-- 시크릿 (.env, API 키, 인증 정보)
-- 빌드 산출물 (.build/, DerivedData/)
-- 생성된 파일 (node_modules/, .pyc)
+`settings.json` 을 제외한 나머지는 심볼릭 링크로 배포된다. 링크된 파일을 이 리포에서
+고치면 즉시 반영되므로, 편집 후 재시작 없이 동작이 바뀔 수 있다는 점을 감안한다.
 
-# Coding Standards
-> 프로젝트의 **implementation** 스킬에 정의. 함수형 스타일, YAGNI, 타입 명시, SOLID 등.
-> Python 프로젝트의 경우 **stack-python** 스킬 참조 (해당 스킬 존재 시).
+## 유지보수 규칙
 
-- 코드를 수정할 때 trailing space를 만들지 않도록 해
-- Ask questions to clarify any unclear parts
-- Stop and ask before proceeding to the next step after completing the instructed amount
+- `settings.json` 의 `permissions` 배열을 수정하면 같은 커밋에서 `PERMISSIONS.md` 의
+  해당 카테고리 표와 변경 이력도 갱신한다. 자세한 절차는 `PERMISSIONS.md` 의
+  "유지보수 규칙" 섹션에 있다.
+- 스킬을 추가하거나 삭제하면 `README.md` 의 스킬 목록을 함께 갱신한다.
+- 스킬이 다른 스킬을 이름으로 참조하면 그 스킬이 실제로 `skills/` 에 존재하는지 확인한다.
+  존재하지 않는 스킬을 참조하는 문서는 실행 시점에 조용히 실패한다.
+- 리포 경로나 디렉토리 구조를 바꾸면 `~/.claude` 안의 심볼릭 링크가 한꺼번에 끊긴다.
+  변경 후 `/claude-config-doctor` 로 무결성을 확인한다.
 
-# 문서 리뷰시
-- 말투나 어미 톤과 매너는 가능한 그대로 유지해줘.
-- 다른 사람인 티가 나거나 AI로 작성한 티가 나지 않았으면 좋겠어.
-- 하지만 단어나 문장의 어색함 등이 감지되는 경우 수정해줘.
-- 고급스럽고 업무적으로 formal한 형태로 수정해줘.
-- 과장이나 최상급 표현은 걷어내줘. (ex 초과 달성 → 달성, 가장 높게 → 높게)
-- 거창하게 포장하지 말고 담백하게 써줘. (ex 조직의 핵심적인 역할 → 충분히 역할)
-- 지나치게 문어적인 표현은 피해줘. (ex 당부드립니다 → 해주시면 좋겠습니다)
-- 실무에서 쓰는 외래어는 자연스럽게 사용해줘. (ex 얼라인, 피드백, 싱크)
-- 마지막으로 같은 기계적인 나열 접속사 대신 문단 구분으로 처리해줘.
-- 피드백 문서는 짧은 개인적 조언 한 문장으로 마무리해줘.
+## 검증
 
-# 문서 작성시
-- 회의록은 볼드 섹션 제목과 계층형 불릿으로 구성하고, 액션 아이템은 담당자와 함께 별도 섹션으로 분리해줘.
-- 프롬프트, README 등 문서 작성 시 핵심만 담아 짧게 작성해줘.
+변경을 커밋하기 전에 다음을 확인한다:
 
-# Communication Style
-- 기술적 설명 시 단계별로 구조화해서 설명
-- 예시 코드 제공 시 주석으로 설명 추가
-- 대안이 있는 경우 간략하게 언급
-- 한국어로 답변하되 기술 용어는 영어 병기
-- 대화 중 로컬 파일을 지칭할 때는 항상 절대경로(전체 경로)를 사용한다 — 바로 클릭하거나 복사해 접근할 수 있도록.
-  - 단, 파일 *내용*에 경로를 기록할 때는 그 파일의 관습을 따른다 (절대경로로 바꾸지 않는다). 예: 블로그 마크다운의 이미지 참조(`media_subpath` 기반 상대경로), import 경로, 설정 파일의 상대경로 등.
+```bash
+/claude-config-doctor
+```
 
-# Debugging & Problem Solving
-- 문제에 대한 원인 파악을 우선할 것
-- 문제를 회피하지 말고 근본적인 해결책을 우선
-- 에러 메시지 분석 시 원인과 해결책을 명확히 구분
-- 여러 해결 방법이 있는 경우 장단점 비교
-- 성능이나 보안에 영향을 주는 부분은 별도 언급
-
-# 추가 고려사항
-- 라이브러리나 프레임워크 추천 시 최신 버전 기준으로 안내
-- 베스트 프랙티스와 안티 패턴 구분해서 설명
+심볼릭 링크 무결성, 리포와 `~/.claude` 의 드리프트, 유령 스킬 참조를 한 번에 점검한다.
