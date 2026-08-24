@@ -1,6 +1,6 @@
 ---
 name: sync-claude-config
-description: Use when the user wants to apply the claude-config repo (settings.json, skills, statusline) to the current machine, or explicitly invokes /sync-claude-config. Safely merges with any existing ~/.claude/settings.json so local customizations are preserved.
+description: Use when the user wants to apply the claude-config repo (settings.json, CLAUDE.md, rules, skills, statusline) to the current machine, when ~/.claude symlinks are broken after a repo move, or when the user explicitly invokes /sync-claude-config. Safely merges with any existing ~/.claude/settings.json so local customizations are preserved.
 ---
 
 # Sync Claude Config Skill
@@ -9,10 +9,13 @@ description: Use when the user wants to apply the claude-config repo (settings.j
 
 이 스킬은 `~/claude-config/` 리포의 Claude Code 설정을 **현재 컴퓨터의 `~/.claude/`** 에 적용한다. 기존 설정이 있으면 손실 없이 병합한다.
 
+배포 대상은 `settings.json`, `dot-claude/` 아래의 전역 지침과 규칙, `skills/`, `statusline-command.sh` 네 갈래다. `settings.json` 만 병합 방식이고 나머지는 심볼릭 링크로 연결한다.
+
 ## When to Invoke
 
 - 새 컴퓨터에 Claude 설정을 처음 깔 때
 - 리포가 업데이트된 후 기존 머신을 동기화할 때
+- 리포를 옮긴 뒤 `~/.claude` 안의 심볼릭 링크가 끊겼을 때
 - 사용자가 명시적으로 `/sync-claude-config` 를 호출했을 때
 
 ## Prerequisites
@@ -160,7 +163,37 @@ fi
 echo '{"model":{"display_name":"test"},"workspace":{"current_dir":"'"$PWD"'"}}' | bash "$SL"
 ```
 
-### 6. 마무리
+### 6. 전역 지침과 규칙 배포
+
+`dot-claude/` 는 `~/.claude/` 를 그대로 미러링한다. 각 파일을 같은 상대 경로에 링크한다.
+스킬과 동일하게 끊긴 링크를 재연결 대상으로 잡는다.
+
+```bash
+find "$REPO/dot-claude" -type f | while read -r src; do
+  rel="${src#$REPO/dot-claude/}"
+  target="$HOME/.claude/$rel"
+  mkdir -p "$(dirname "$target")"
+
+  if [ -L "$target" ] && [ ! -e "$target" ]; then
+    rm "$target"; ln -s "$src" "$target"
+    echo "repaired: $rel"
+  elif [ ! -e "$target" ]; then
+    ln -s "$src" "$target"
+    echo "linked: $rel"
+  elif [ -L "$target" ] && [ "$(readlink "$target")" = "$src" ]; then
+    echo "already linked: $rel"
+  else
+    cp "$target" "$target.backup.$(date +%Y%m%d-%H%M%S)"
+    echo "conflict: $rel — diff 를 보여주고 사용자 승인을 받은 뒤 링크로 교체"
+  fi
+done
+```
+
+`~/.claude/CLAUDE.md` 가 독립 파일로 존재하는 머신에서는 반드시 diff 를 보여주고
+승인을 받는다. 그 머신에만 있는 지침이 들어 있을 수 있으므로 자동 교체하지 않는다.
+승인 전 백업은 위 코드에서 이미 만들어 둔다.
+
+### 7. 마무리
 
 사용자에게 다음을 안내한다:
 
