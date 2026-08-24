@@ -177,13 +177,28 @@ def check_statusline() -> None:
 
 
 def check_env_tokens(repo: Path) -> None:
-    """스킬이 전제하는 환경변수가 실제로 설정돼 있는지 본다."""
+    """스킬이 전제하는 환경변수가 실제로 설정돼 있는지 본다.
+
+    목록의 출처는 docs/tokens.md 의 표다. SKILL.md 본문에서 긁으면 서술 방식이
+    바뀔 때마다 조용히 놓치므로, 한 곳에 모아둔 표를 정답으로 삼는다.
+    """
     print("\n[5] 스킬이 요구하는 환경변수")
-    pattern = re.compile(r"환경변수 `([A-Z][A-Z0-9_]+)`")
     required: dict[str, str] = {}
+
+    tokens_doc = repo / "docs" / "tokens.md"
+    if tokens_doc.exists():
+        row = re.compile(r"^\|\s*`([A-Z][A-Z0-9_]+)`\s*\|\s*([^|]+?)\s*\|")
+        for line in tokens_doc.read_text().splitlines():
+            if m := row.match(line):
+                required[m.group(1)] = m.group(2)
+    else:
+        warn("docs/tokens.md 가 없다. 환경변수 목록을 확인할 수 없다")
+
+    # 표에 빠진 것이 있으면 SKILL.md 본문에서도 주워 담는다.
+    pattern = re.compile(r"환경변수 `([A-Z][A-Z0-9_]+)`")
     for doc in (repo / "skills").rglob("SKILL.md"):
         for name in pattern.findall(doc.read_text()):
-            required[name] = doc.parent.name
+            required.setdefault(name, doc.parent.name)
     if not required:
         ok("환경변수를 요구하는 스킬 없음")
         return
