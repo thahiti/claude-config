@@ -23,15 +23,41 @@ if git -C "${cwd:-$(pwd)}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
            || git -C "${cwd:-$(pwd)}" rev-parse --short HEAD 2>/dev/null)
 fi
 
-# ── ccusage: 7일 누적 비용 ────────────────────────────────────────────────
-CCUSAGE_BIN="npx --yes ccusage@latest"
-week_cost=$($CCUSAGE_BIN daily --since 7d --json 2>/dev/null | jq -r '
-  if type == "array" then
-    (map(.cost // .totalCost // 0) | add // 0)
-  elif .daily then
-    (.daily | map(.cost // .totalCost // 0) | add // 0)
-  else empty end
-' 2>/dev/null)
+# ── ccusage: 7일 누적 비용 (캐시) ─────────────────────────────────────────
+# 상태라인은 매우 자주 렌더된다. npx 를 그때마다 띄우면 프로세스 생성과 네트워크
+# 조회가 반복돼 입력이 눈에 띄게 느려진다. 캐시를 읽어 즉시 출력하고, 만료됐으면
+# 갱신은 백그라운드로 던져 렌더를 절대 막지 않는다.
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.claude/cache}"
+CACHE_FILE="$CACHE_DIR/ccusage-week.txt"
+CACHE_TTL=300
+
+mkdir -p "$CACHE_DIR" 2>/dev/null
+
+cache_age() {
+  [ -f "$CACHE_FILE" ] || { echo 999999; return; }
+  local mtime
+  mtime=$(stat -f %m "$CACHE_FILE" 2>/dev/null || stat -c %Y "$CACHE_FILE" 2>/dev/null)
+  [ -n "$mtime" ] && echo $(( $(date +%s) - mtime )) || echo 999999
+}
+
+refresh_week_cost() {
+  npx --yes ccusage@latest daily --since 7d --json 2>/dev/null | jq -r '
+    if type == "array" then
+      (map(.cost // .totalCost // 0) | add // 0)
+    elif .daily then
+      (.daily | map(.cost // .totalCost // 0) | add // 0)
+    else empty end
+  ' 2>/dev/null > "$CACHE_FILE.tmp" && mv "$CACHE_FILE.tmp" "$CACHE_FILE"
+}
+
+if [ "$(cache_age)" -gt "$CACHE_TTL" ]; then
+  # 락 파일로 중복 실행을 막는다. 여러 세션이 동시에 렌더해도 갱신은 하나만 돈다.
+  if mkdir "$CACHE_FILE.lock" 2>/dev/null; then
+    ( refresh_week_cost; rmdir "$CACHE_FILE.lock" ) >/dev/null 2>&1 &
+  fi
+fi
+
+week_cost=$(cat "$CACHE_FILE" 2>/dev/null)
 
 # ── 출력 ──────────────────────────────────────────────────────────────────────
 
