@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 input=$(cat)
 
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
@@ -11,7 +11,7 @@ usage_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // emp
 # Current directory (shorten home to ~)
 home="$HOME"
 if [ -n "$cwd" ]; then
-  dir="${cwd/#$home/\~}"
+  dir="${cwd/#$home/~}"
 else
   dir="$(pwd | sed "s|^$HOME|~|")"
 fi
