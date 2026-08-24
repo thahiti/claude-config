@@ -12,10 +12,20 @@ ClickUp 리스트에 생성한다.
 
 ## Prerequisites
 
-- 환경변수 `CLICKUP_API_TOKEN`: Personal API Token (`pk_` 접두사)
-- 대상 Space: **AI-Agent** (`space_id` = `90183489630`)
-- 태스크 생성 List는 [카테고리](#category--current-sprint) 중에서 **사용자에게 질문**해 결정
-- 환경변수 `CLICKUP_LIST_ID`는 무시 가능 (카테고리 선택이 우선)
+| 환경변수 | 값 | 발급 방법 |
+|---|---|---|
+| `CLICKUP_API_TOKEN` | Personal API Token (`pk_` 접두사) | `docs/tokens.md` 참조 |
+| `CLICKUP_SPACE_ID` | 태스크를 만들 Space 의 ID | `docs/tokens.md` 참조 |
+
+두 값이 모두 있어야 실행된다. 하나라도 비어 있으면 첫 API 호출이 401 또는 404 로
+실패하므로, 시작 전에 확인하고 없으면 발급 방법을 안내한 뒤 중단한다.
+
+```bash
+: "${CLICKUP_API_TOKEN:?docs/tokens.md 를 보고 발급해 셸 프로필에 등록하세요}"
+: "${CLICKUP_SPACE_ID:?docs/tokens.md 를 보고 Space ID 를 확인해 등록하세요}"
+```
+
+태스크를 만들 List 는 Space 안의 카테고리 중에서 **사용자에게 질문**해 결정한다.
 
 ## Interactive Workflow (핵심)
 
@@ -77,37 +87,43 @@ due date도 동일하게 사용자가 지정한 날짜를 밀리초 timestamp로
 (ClickUp의 Tasks in Multiple Lists 기능). 카테고리 List가 home List가 되고,
 현재 스프린트는 추가 location이 된다.
 
-### 카테고리 List (AI-Agent Space, folderless)
+### 카테고리 List (Space 직속, folderless)
 
-사용자에게 아래 중 하나를 질문한다:
+카테고리는 Space 에서 조회한다. 목록을 문서에 고정하지 않는 이유는 두 가지다.
+ClickUp 에서 List 를 추가하거나 이름을 바꾸면 고정 표가 바로 낡고, 개인 워크스페이스
+구조가 공개 리포에 남기 때문이다.
 
-| 카테고리 | List ID |
-|----------|---------|
-| Frontend | `901806401325` |
-| Agent | `901806401344` |
-| Research | `901806401355` |
-| Backend | `901806400968` |
-| Issue | `901807901811` |
-| ETC | `901808383828` |
-| 기획/디자인 | `901810165312` |
-| 프로젝트 | `901811891844` |
+```bash
+curl -s "https://api.clickup.com/api/v2/space/${CLICKUP_SPACE_ID}/list?archived=false" \
+  -H "Authorization: ${CLICKUP_API_TOKEN}" \
+  | python3 -c "import sys,json; [print(f\"{l['id']}\t{l['name']}\") for l in json.load(sys.stdin)['lists']]"
+```
 
-> ID가 바뀌었거나 카테고리가 추가됐으면 갱신:
-> `curl -s "https://api.clickup.com/api/v2/space/90183489630/list?archived=false" -H "Authorization: ${CLICKUP_API_TOKEN}"`
+조회한 이름을 사용자에게 보여주고 하나를 고르게 한 뒤, 그 List ID 를 `LIST_ID` 로 쓴다.
+조회 결과가 비어 있으면 `CLICKUP_SPACE_ID` 가 잘못된 것이므로 값을 확인하도록 안내한다.
 
 ### 현재 스프린트 (동적 계산)
 
-Sprint Folder(`90184157607`) 안의 스프린트 List 중 **오늘이 start_date ~ due_date
-범위에 드는 것**이 현재 스프린트다. 스프린트는 2주마다 바뀌므로 매번 동적으로 계산한다.
+스프린트 Folder 안의 List 중 **오늘이 start_date ~ due_date 범위에 드는 것**이
+현재 스프린트다. 스프린트는 2주마다 바뀌므로 매번 동적으로 계산한다.
+
+Folder 도 Space 에서 찾는다. 이름에 `sprint` 가 들어가는 Folder 를 쓰고,
+여러 개면 사용자에게 묻는다.
 
 ```bash
-SPRINT_FOLDER=90184157607
+SPRINT_FOLDER="$(curl -s "https://api.clickup.com/api/v2/space/${CLICKUP_SPACE_ID}/folder?archived=false" \
+  -H "Authorization: ${CLICKUP_API_TOKEN}" \
+  | python3 -c "import sys,json; print(next(f['id'] for f in json.load(sys.stdin)['folders'] if 'sprint' in f['name'].lower()))")"
+
 NOW="$(date +%s)000"
 SPRINT_LIST_ID="$(curl -s "https://api.clickup.com/api/v2/folder/${SPRINT_FOLDER}/list?archived=false" \
   -H "Authorization: ${CLICKUP_API_TOKEN}" \
   | python3 -c "import sys,json; now=int('${NOW}'); d=json.load(sys.stdin); print(next(l['id'] for l in d['lists'] if l.get('start_date') and l.get('due_date') and int(l['start_date'])<=now<=int(l['due_date'])))")"
 echo "현재 스프린트 List: ${SPRINT_LIST_ID}"
 ```
+
+현재 날짜에 해당하는 스프린트가 없으면 `StopIteration` 이 난다. 스프린트가 아직
+만들어지지 않았다는 뜻이므로, 태스크는 카테고리 List 에만 만들고 스프린트 추가는 건너뛴다.
 
 ### 스프린트에 태스크 추가
 
@@ -118,7 +134,8 @@ curl -s -X POST "https://api.clickup.com/api/v2/list/${SPRINT_LIST_ID}/task/${TA
   -H "Authorization: ${CLICKUP_API_TOKEN}" -H "Content-Type: application/json" -d '{}'
 ```
 
-> 동작 전제: 해당 Space에 **Tasks in Multiple Lists** ClickApp이 활성화돼 있어야 한다 (현재 활성 상태 확인됨).
+> 동작 전제: 해당 Space에 **Tasks in Multiple Lists** ClickApp이 활성화돼 있어야 한다.
+> 비활성 상태면 이 호출이 실패하므로, 카테고리 List 생성까지만 하고 스프린트 추가는 건너뛴다.
 
 ## API Reference
 
@@ -231,7 +248,7 @@ time estimate 를 반영한다.
 
 ```bash
 # --- 입력 (인터랙티브 수집 결과) ---
-export LIST_ID=901806401355                                  # 사용자가 선택한 카테고리 (예: Research)
+export LIST_ID="${LIST_ID:?위에서 사용자가 고른 카테고리 List ID}"   # 카테고리 조회 결과에서 선택
 export TASK_NAME="[Research] 한국형 ARPA-H 프로젝트 제안서 파악"
 export MD="## 목적
 - ...
@@ -278,7 +295,7 @@ TASK_ID="$(python3 -c "import json,sys; print(json.load(open('$RESP_FILE'))['id'
 echo "created: $TASK_ID"
 
 # ② 현재 스프린트 List 계산 후 태스크 추가 (위 Category & Current Sprint 참고)
-SPRINT_LIST_ID="$(curl -s "https://api.clickup.com/api/v2/folder/90184157607/list?archived=false" \
+SPRINT_LIST_ID="$(curl -s "https://api.clickup.com/api/v2/folder/${SPRINT_FOLDER}/list?archived=false" \
   -H "Authorization: ${CLICKUP_API_TOKEN}" \
   | python3 -c "import sys,json; now=int('$(date +%s)000'); d=json.load(sys.stdin); print(next(l['id'] for l in d['lists'] if l.get('start_date') and l.get('due_date') and int(l['start_date'])<=now<=int(l['due_date'])))")"
 curl -s -o /dev/null -w "add-to-sprint HTTP %{http_code}\n" -X POST \
