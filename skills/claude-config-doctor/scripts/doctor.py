@@ -176,13 +176,38 @@ def check_statusline() -> None:
         ok(f"출력 정상 ({len(out)}자)")
 
 
+def check_hook_scripts(repo: Path) -> None:
+    """훅이 참조하는 스크립트가 실제로 존재하는지 본다.
+
+    훅 커맨드의 경로가 끊기면 차단이 조용히 사라진다. 훅은 실패해도 눈에 띄지 않으므로
+    없어진 것을 알려주지 않으면 보호받고 있다고 착각하게 된다.
+    """
+    print("\n[5] 훅 스크립트 경로")
+    cfg = json.loads((repo / "settings.json").read_text())
+    path_re = re.compile(r'["\']?(\$HOME|~)(/[\w./-]+\.(?:py|sh))["\']?')
+    found = False
+    for event, matchers in (cfg.get("hooks") or {}).items():
+        for matcher in matchers:
+            for hook in matcher.get("hooks", []):
+                for m in path_re.finditer(str(hook.get("command", ""))):
+                    found = True
+                    target = HOME / m.group(2).lstrip("/")
+                    label = f"{event} — {m.group(1)}{m.group(2)}"
+                    if target.exists():
+                        ok(label)
+                    else:
+                        fail(f"{label} — 파일이 없다. 이 훅은 조용히 실패한다")
+    if not found:
+        ok("외부 스크립트를 참조하는 훅 없음 (전부 인라인)")
+
+
 def check_env_tokens(repo: Path) -> None:
     """스킬이 전제하는 환경변수가 실제로 설정돼 있는지 본다.
 
     목록의 출처는 docs/tokens.md 의 표다. SKILL.md 본문에서 긁으면 서술 방식이
     바뀔 때마다 조용히 놓치므로, 한 곳에 모아둔 표를 정답으로 삼는다.
     """
-    print("\n[5] 스킬이 요구하는 환경변수")
+    print("\n[6] 스킬이 요구하는 환경변수")
     required: dict[str, str] = {}
 
     tokens_doc = repo / "docs" / "tokens.md"
@@ -220,6 +245,7 @@ def main() -> int:
     check_settings_drift(repo)
     check_ghost_skills(repo)
     check_statusline()
+    check_hook_scripts(repo)
     check_env_tokens(repo)
 
     print(f"\n{'-' * 50}")
