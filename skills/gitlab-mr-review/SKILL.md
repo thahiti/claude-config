@@ -11,7 +11,16 @@ GitLab Merge Request URL을 입력받아 multi-agent 코드 리뷰를 수행하�
 
 ## Prerequisites
 
-- 환경변수 `GITLAB_TOKEN`: GitLab Personal Access Token (`glpat-` 접두사, `read_api` scope 이상)
+- 환경변수 `GITLAB_TOKEN`: GitLab Personal Access Token (`glpat-` 접두사).
+  MR 조회와 diff 읽기는 `read_api`, 리뷰 결과를 MR 코멘트로 작성하려면 `api` scope 가 필요하다.
+  발급 절차는 `docs/tokens.md` 참조.
+
+```bash
+: "${GITLAB_TOKEN:?docs/tokens.md 를 보고 발급해 셸 프로필에 등록하세요}"
+```
+
+값이 없으면 API 호출이 401 로 실패하므로 시작 전에 확인하고, 없으면 발급 방법을
+안내한 뒤 중단한다.
 
 ## URL Parsing
 
