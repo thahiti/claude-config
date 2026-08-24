@@ -4,7 +4,7 @@
 
 ---
 
-## ⚠️ 유지보수 규칙 (Maintenance Rule)
+## 유지보수 규칙 (Maintenance Rule)
 
 **`settings.json` 의 `permissions.allow` / `deny` / `ask` 배열을 수정할 때 반드시 이 문서도 함께 업데이트한다.** 새 규칙을 추가하거나 제거하면:
 
