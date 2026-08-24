@@ -75,7 +75,7 @@
 |---|---|
 | `Bash(git:*)` | 모든 git 서브커맨드 |
 
-**주의**: `git reset --hard`, `git push --force`, `git branch -D` 등 파괴적 명령도 포함된다. `CLAUDE.md` 의 "명시 요청 없이 파괴적 git 명령 금지" 원칙으로 모델이 자제하지만, 규칙 차원 차단이 필요하면 `permissions.deny` 에 별도 추가한다.
+**주의**: `Bash(git:*)` 는 파괴적 명령까지 포함한다. 그중 되돌리기 어려운 것은 아래 [8. 차단 규칙](#8-차단-규칙-deny) 에서 막는다.
 
 ## 5. 의존성 설치 (Dependency install / query)
 
@@ -110,6 +110,32 @@
 |---|---|
 | `Bash(source ~/.nvm/nvm.sh *)` | nvm 환경 로드 — 사전 조건 |
 
+## 8. 차단 규칙 (Deny)
+
+`deny` 는 `allow` 보다 우선한다. `Bash(git:*)` 로 열어둔 범위에서 되돌리기 어려운 명령만 도로 닫는다.
+
+| 규칙 | 근거 |
+|---|---|
+| `Bash(git push --force:*)` | 원격 히스토리 파괴. 되돌릴 수 없다 |
+| `Bash(git push -f:*)` | 위와 동일, 축약 플래그 |
+| `Bash(git reset --hard:*)` | 커밋되지 않은 작업 유실 |
+| `Bash(git branch -D:*)` | 머지되지 않은 브랜치 강제 삭제 |
+| `Bash(git clean -fd:*)` | 추적되지 않는 파일 일괄 삭제 |
+
+**한계**: 접두사 매칭이라 `git push origin main --force` 처럼 플래그가 뒤에 오면 빠져나간다. 실수를 막는 턱이지 봉인이 아니다. 완전한 차단이 필요하면 커맨드를 파싱하는 `PreToolUse` 훅으로 올린다.
+
+## 9. 훅으로 강제하는 규칙
+
+허용 규칙으로 표현할 수 없는 것은 훅이 맡는다. 문장으로만 있는 규칙은 지켜지지 않으므로, 강제 가능한 것은 이쪽으로 옮긴다.
+
+| 훅 | 시점 | 막는 것 |
+|---|---|---|
+| 커밋 게이트 (settings.json 인라인) | `PreToolUse` / `Bash(git commit *)` | 커밋 메시지의 Claude 서명, `.env` 와 빌드 산출물 스테이징 |
+| `dot-claude/hooks/check-written-file.py` | `PostToolUse` / `Edit`, `Write` | 새로 쓴 내용의 이모지와 줄 끝 공백 |
+| 커밋 리뷰 (settings.json 인라인) | `PostToolUse` / `Bash(git commit *)` | 커밋 형식과 원자성 사후 검토 |
+
+커밋 게이트를 외부 스크립트가 아닌 인라인으로 둔 이유는 경로가 끊겼을 때 차단이 조용히 사라지는 것을 막기 위해서다. 스크립트를 쓰는 훅은 `/claude-config-doctor` 가 경로 존재를 점검한다.
+
 ---
 
 ## 설정 적용 방법
@@ -134,4 +160,5 @@ cd 만 해도 `.claude/skills/sync-claude-config` 가 프로젝트 레벨 스킬
 
 ## 변경 이력 (Changelog)
 
-- **2026-04-24** — 초기 문서화. 61개 규칙을 7개 카테고리로 정리. 설계 원칙·유지 규칙·적용 방법 수록.
+- **2026-04-24** — 초기 문서화. 61개 규칙을 7개 카테고리로 정리. 설계 원칙, 유지 규칙, 적용 방법 수록.
+- **2026-08-24** — `deny` 5건 신설. `Bash(git:*)` 가 열어둔 파괴적 명령을 도로 닫았다. 훅으로 강제하는 규칙을 9장에 정리.
