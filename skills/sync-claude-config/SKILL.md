@@ -95,37 +95,69 @@ ln -s "$REPO/settings.json" "$TARGET"
 
 ### 4. 스킬 배포
 
-리포의 `skills/*/` 각각에 대해:
+리포의 `skills/*/` 각각에 대해 네 가지 상태로 분류한다:
 
-1. `~/.claude/skills/<name>/` 이 없으면 → 리포의 디렉토리를 심볼릭 링크로 연결
-2. 있으면 → 내용을 `diff -r` 로 비교. 같으면 패스, 다르면 **사용자에게 물어본다** (자동 덮어쓰기 금지)
+| 상태 | 판별 | 대응 |
+|---|---|---|
+| **없음** | 대상 경로에 아무것도 없음 | 심볼릭 링크 생성 |
+| **정상 링크** | 이미 리포의 해당 디렉토리로 연결됨 | 아무것도 하지 않음 |
+| **끊긴 링크** | 링크이지만 대상이 존재하지 않음 | 삭제 후 재생성 (사용자 확인 불필요) |
+| **충돌** | 실제 디렉토리이거나 다른 곳을 가리키는 링크 | **사용자에게 물어본다** (자동 덮어쓰기 금지) |
+
+끊긴 링크를 충돌로 취급하면 안 된다. `[ ! -e "$target" ]` 는 끊긴 링크에 대해 거짓이므로
+`-e` 단독 판별은 끊긴 링크를 충돌 분기로 보낸다. 리포 경로가 바뀌면 모든 링크가 한꺼번에
+끊기는데, 그때 복구가 막히는 원인이 바로 이 검사다. `-L` 을 함께 봐야 한다.
+
+경로 비교 시 glob 이 붙이는 후행 슬래시를 `${skill_dir%/}` 로 제거한다. 제거하지 않으면
+같은 대상인데도 `readlink` 결과가 달라 정상 링크를 충돌로 오판한다.
 
 ```bash
 for skill_dir in "$REPO"/skills/*/; do
-  name=$(basename "$skill_dir")
+  src="${skill_dir%/}"
+  name=$(basename "$src")
   target="$HOME/.claude/skills/$name"
-  if [ ! -e "$target" ]; then
-    ln -s "$skill_dir" "$target"
+
+  if [ -L "$target" ] && [ ! -e "$target" ]; then
+    rm "$target"; ln -s "$src" "$target"
+    echo "repaired: $name (끊긴 링크 재연결)"
+  elif [ ! -e "$target" ]; then
+    ln -s "$src" "$target"
     echo "linked: $name"
-  elif [ -L "$target" ] && [ "$(readlink "$target")" = "$skill_dir" ]; then
+  elif [ -L "$target" ] && [ "$(readlink "$target")" = "$src" ]; then
     echo "already linked: $name"
   else
-    echo "⚠ conflict: $name — 사용자 확인 필요"
-    # diff -r "$skill_dir" "$target" 결과를 사용자에게 보여주고 승인 받기
+    echo "conflict: $name — 사용자 확인 필요"
+    # diff -r "$src" "$target" 결과를 사용자에게 보여주고 승인 받기
   fi
 done
 ```
 
 ### 5. 상태라인 스크립트
 
-리포의 `statusline-command.sh` 가 `~/.claude/` 에 없거나 심볼릭 링크가 아니면 연결한다:
+`~/.claude/statusline-command.sh` 도 스킬과 같은 네 상태로 분류한다. 특히 **끊긴 링크**를
+반드시 잡아야 한다. `[ ! -L ... ]` 단독 검사는 링크가 존재하기만 하면 통과시키므로,
+대상이 사라진 링크를 그대로 방치해 상태라인이 조용히 빈 줄만 출력하게 만든다.
 
 ```bash
-if [ ! -L "$HOME/.claude/statusline-command.sh" ]; then
-  [ -f "$HOME/.claude/statusline-command.sh" ] && \
-    cp "$HOME/.claude/statusline-command.sh" "$HOME/.claude/statusline-command.sh.backup"
-  ln -sf "$REPO/statusline-command.sh" "$HOME/.claude/statusline-command.sh"
+SL="$HOME/.claude/statusline-command.sh"
+
+if [ -L "$SL" ] && [ ! -e "$SL" ]; then
+  rm "$SL"; ln -s "$REPO/statusline-command.sh" "$SL"
+  echo "repaired: statusline (끊긴 링크 재연결)"
+elif [ ! -e "$SL" ]; then
+  ln -s "$REPO/statusline-command.sh" "$SL"
+elif [ -L "$SL" ] && [ "$(readlink "$SL")" = "$REPO/statusline-command.sh" ]; then
+  echo "already linked: statusline"
+else
+  cp "$SL" "$SL.backup.$(date +%Y%m%d-%H%M%S)"
+  ln -sf "$REPO/statusline-command.sh" "$SL"
 fi
+```
+
+연결 후 실제로 동작하는지 확인한다:
+
+```bash
+echo '{"model":{"display_name":"test"},"workspace":{"current_dir":"'"$PWD"'"}}' | bash "$SL"
 ```
 
 ### 6. 마무리
