@@ -119,6 +119,58 @@ uv.lock 을 다시 써서 작업과 무관한 diff 가 남는다. `--locked` 는
 | `pyproject.toml` 을 손으로 편집 | 한 줄만 고치면 되는 일로 보인다 | uv.lock 이 낡아 CI 가 다른 버전을 푼다 |
 | 개발 도구를 `[project.optional-dependencies]` 에 선언 | extras 라는 이름이 개발용처럼 들린다 | pytest 나 ruff 가 사용자에게 배포되는 extras 로 새어 나간다 |
 
+### 린트와 포맷: ruff
+
+린터와 포매터를 ruff 하나로 합친다. 공식 문서 기준 대체 범위는 Flake8, Black, isort,
+pydocstyle, pyupgrade, autoflake 다. 임포트 정렬도 별도 도구 없이 `I` 규칙에 맡긴다.
+
+| 목적 | 명령 | 알아둘 점 |
+|---|---|---|
+| 포맷 | `uv run ruff format .` | 제자리에서 고친다. 고쳐도 종료 코드는 0 이라 CI 에서 변경 감지가 필요하면 `--exit-non-zero-on-format` |
+| 포맷 검사 | `uv run ruff format --check .` | 쓰지 않고 대상만 알린다. 0 은 없음, 1 은 있음, **2 는 설정 오류** |
+| 린트 | `uv run ruff check .` | 디렉터리는 재귀 탐색하고 `.gitignore` 를 따른다 |
+| 자동 수정 | `uv run ruff check . --fix` | `--fix` 는 옵트인이다. 안전하지 않은 수정은 `--unsafe-fixes` 로 따로 켠다 |
+
+CI 에서 종료 코드 2 를 1 과 같이 취급하지 않는다. 2 는 미포맷이 아니라 설정이 깨진 상태라,
+합쳐 보면 설정 오류를 포맷 실패로 오인한다.
+
+룰셋은 프로젝트마다 정한다. 실제 저장소가 갈리는 축은 큐레이션한 `select` 목록이냐,
+`select = ["ALL"]` 후 `ignore` 로 깎느냐다. pydantic 과 MCP Python SDK 는 앞쪽,
+Streamlit 은 뒤쪽이다. 표본이 셋뿐이라 다수를 말할 수 없으므로 하나를 권장하지 않는다.
+다만 `select` 를 비워두는 곳은 없다.
+
+**하위 옵션은 해당 룰 패밀리를 select 해야 살아난다.** pydantic 은 mccabe `max-complexity` 를
+적어두고 `C901` 을 선택하지 않아 그 설정이 통째로 무효다. 설정을 적었으니 켜졌다고 가정하지 않는다.
+
+줄 길이 같은 수치는 `pyproject.toml` 에 두고 문서나 리뷰 코멘트에 값을 옮겨 적지 않는다.
+포매터가 감싸는 폭과 `E501` 이 허용하는 폭을 다르게 두는 방식도 있다. 주석, URL, 문자열
+리터럴은 포매터가 흘려 넣지 못하므로 사람이 길게 남겨도 되는 폭을 따로 여는 것이다.
+
+### 타입 검사: pyright
+
+**기본 typeCheckingMode 는 standard 다. basic 이 아니다.** standard 는 1.1.339 에서
+추가되면서 기본값이 되었다. 옛 자료를 따라 "기본이 basic 이니 올려야 한다" 고 판단하면
+이미 켜져 있는 검사를 다시 켜는 설정을 쓰게 된다.
+
+strict 가 standard 위에 얹는 것은 세 갈래다.
+
+- 추론 엄격화 스위치 3개: `strictListInference`, `strictDictionaryInference`, `strictSetInference`
+- 규칙 7개를 warning 에서 error 로 승격
+- unknown 타입 계열 5개와 `reportMissingTypeStubs` 를 새로 켬. 나머지 모드에서는 전부 `none` 이다
+
+거는 방식은 둘로 갈린다. 신규 코드베이스는 전역 `typeCheckingMode = "strict"` 를 걸고
+디렉터리별로 완화하는 편이 손이 덜 가고, 이미 큰 코드베이스는 파일 허용목록으로 넓혀가는
+편이 낫다. MCP Python SDK 가 앞쪽, pydantic 이 뒤쪽이다.
+
+설정은 `pyrightconfig.json` 이나 `pyproject.toml` 의 `[tool.pyright]` 에 둔다. **둘 다 있으면
+`pyrightconfig.json` 이 이기고 병합이 아니라 `[tool.pyright]` 를 아예 읽지 않는다.** 상위
+디렉터리의 JSON 이 프로젝트의 toml 을 이기기도 하므로, 설정이 안 먹으면 위쪽에 JSON 이
+있는지 먼저 본다.
+
+검사기 선택은 아직 갈린다. 조사한 셋 중 MCP Python SDK 는 pyright 단독, pydantic 은 pyright
+주력에 mypy 병행, Streamlit 은 pyright 없이 mypy 다. 이 환경에는 `pyright-lsp` 플러그인이
+켜져 있어 편집 중 진단이 올라오지만, 프로젝트에 이미 검사기가 있으면 그쪽을 따른다.
+
 ### 테스트: pytest
 
 `uv run pytest` 로 돌린다. 테스트 함수 이름은 무엇을 검증하는지 문장으로 적는다.
@@ -139,5 +191,8 @@ uv.lock 을 다시 써서 작업과 무관한 diff 가 남는다. `--locked` 는
 | 예외 로깅에 `logger.error()` | 스택 트레이스가 사라져 원인 지점을 잃는다 |
 | `uv pip install` 로 의존성 추가 | uv 명령처럼 보이지만 pyproject.toml 과 uv.lock 을 건드리지 않는다 |
 | 도구를 맨 `python` 으로 실행 | 시스템 인터프리터를 잡아 다른 의존성 버전으로 돈다 |
+| pyright 기본을 basic 으로 가정 | 기본은 standard 다. 이미 켜진 검사를 다시 켜는 설정이 된다 |
+| select 없이 룰 하위 옵션만 설정 | 패밀리를 선택하지 않으면 그 설정은 통째로 무효다 |
+| `ruff format --check` 의 2 를 실패로 처리 | 2 는 미포맷이 아니라 설정 오류다 |
 | docstring 에 타입 반복 기재 | 시그니처와 어긋날 수 있다. 타입은 힌트에만 둔다 |
 | 모듈 최상위에서 부수효과 실행 | import 만 해도 동작한다. `if __name__ == "__main__":` 아래로 내린다 |
