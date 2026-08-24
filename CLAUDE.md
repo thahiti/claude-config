@@ -13,6 +13,7 @@
 | `dot-claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | 전역 개인 지침 |
 | `dot-claude/rules/` | `~/.claude/rules/` | 상황별 규칙 파일 |
 | `skills/` | `~/.claude/skills/` | 개인 스킬 |
+| `dot-claude/hooks/` | `~/.claude/hooks/` | 훅 스크립트 |
 | `settings.json` | `~/.claude/settings.json` | 병합 배포 (링크 아님) |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | 상태라인 |
 
@@ -28,14 +29,5 @@
 - 스킬이 다른 스킬을 이름으로 참조하면 그 스킬이 실제로 `skills/` 에 존재하는지 확인한다.
   존재하지 않는 스킬을 참조하는 문서는 실행 시점에 조용히 실패한다.
 - 리포 경로나 디렉토리 구조를 바꾸면 `~/.claude` 안의 심볼릭 링크가 한꺼번에 끊긴다.
-  변경 후 `/claude-config-doctor` 로 무결성을 확인한다.
-
-## 검증
-
-변경을 커밋하기 전에 다음을 확인한다:
-
-```bash
-/claude-config-doctor
-```
-
-심볼릭 링크 무결성, 리포와 `~/.claude` 의 드리프트, 유령 스킬 참조를 한 번에 점검한다.
+- 커밋 전과 구조 변경 후에 `/claude-config-doctor` 를 돌린다. 링크 무결성, 설정 드리프트,
+  유령 스킬 참조, 상태라인, 훅 스크립트 경로를 한 번에 점검한다.
