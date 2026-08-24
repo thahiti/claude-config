@@ -64,7 +64,7 @@
       "mcp__plugin_context7_context7__query-docs"
     ]
   },
-  "model": "fable",
+  "model": "opus",
   "hooks": {
     "PostToolUse": [
       {
@@ -72,16 +72,15 @@
         "hooks": [
           {
             "type": "agent",
-            "prompt": "A git commit was just made. Review the committed changes by running `git diff HEAD~1 HEAD` and `git log -1 --format='%s%n%n%b'`. Check for:\n1. Conventional Commits format compliance (type(scope): description)\n2. Atomic commit principle (one logical change per commit)\n3. Code quality issues (typos, debug code, TODO/FIXME left behind, trailing whitespace)\n4. Potential bugs or logic errors in the diff\n5. Security concerns (hardcoded secrets, credentials)\n\nProvide a brief review summary. If everything looks good, say so concisely. If there are issues, list them clearly with file and line references. Keep the review short and actionable.",
-            "if": "Bash(git commit:*)",
+            "prompt": "Hook input: $ARGUMENTS\n\nA git commit was just made. Review the committed changes by running `git diff HEAD~1 HEAD` and `git log -1 --format='%s%n%n%b'`. Check for:\n1. Conventional Commits format compliance (type(scope): description)\n2. Atomic commit principle (one logical change per commit)\n3. Code quality issues (typos, debug code, TODO/FIXME left behind, trailing whitespace)\n4. Potential bugs or logic errors in the diff\n5. Security concerns (hardcoded secrets, credentials)\n6. No Claude or Anthropic co-author trailers or signatures in the message\n\nProvide a brief review summary. If everything looks good, say so concisely. If there are issues, list them clearly with file and line references. Keep the review short and actionable.",
+            "if": "Bash(git commit *)",
             "timeout": 120,
-            "model": "claude-sonnet-4-6",
+            "model": "claude-sonnet-5",
             "statusMessage": "Reviewing commit..."
           }
         ]
       }
-    ],
-    "UserPromptSubmit": []
+    ]
   },
   "statusLine": {
     "type": "command",
@@ -93,13 +92,20 @@
     "code-review@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
     "swift-lsp@claude-plugins-official": true,
-    "frontend-slides@frontend-slides": true
+    "frontend-slides@frontend-slides": true,
+    "wiki@llm-wiki": true
   },
   "extraKnownMarketplaces": {
     "frontend-slides": {
       "source": {
         "source": "git",
         "url": "https://github.com/zarazhangrui/frontend-slides.git"
+      }
+    },
+    "llm-wiki": {
+      "source": {
+        "source": "github",
+        "repo": "nvk/llm-wiki"
       }
     }
   },
