@@ -74,6 +74,10 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 | `meeting-notes` | 회의록이나 회의 정리 요청 | 그 외 |
 | `claude-config-doctor` | claude-config 리포를 고친 뒤 | 그 외 |
 
+# 질문시
+- 암묵지나 모호한 내용은 반드시 질문을 통해 구체화 한다
+- 질문을 할 때는 전체 문서가 아닌 해당 질문만 읽어도 이해가 되도록 배경 설명과 구체적 예시 파급효과 추천 이유를 같이 제시한다
+
 # 사용툴
 ## python 프로젝트
 프로젝트를 위해 다음 툴들을 필수로 사용
