@@ -22,6 +22,7 @@
 
 | 스킬 | 용도 |
 |---|---|
+| `backup` | 현재 디렉토리를 바탕화면 share 폴더로 백업 (하위 .git 재귀, 구조 보존) |
 | `atomic-commit` | 커밋 단위 판단과 Conventional Commits 형식 |
 | `implementation` | 언어 공통 코딩 규칙 |
 | `stack-python` | Python 타입힌트, docstring, 도구 |
