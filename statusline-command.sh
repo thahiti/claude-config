@@ -36,7 +36,7 @@ mkdir -p "$CACHE_DIR" 2>/dev/null
 cache_age() {
   [ -f "$CACHE_FILE" ] || { echo 999999; return; }
   local mtime
-  mtime=$(stat -f %m "$CACHE_FILE" 2>/dev/null || stat -c %Y "$CACHE_FILE" 2>/dev/null)
+  mtime=$(stat -c %Y "$CACHE_FILE" 2>/dev/null || stat -f %m "$CACHE_FILE" 2>/dev/null)
   [ -n "$mtime" ] && echo $(( $(date +%s) - mtime )) || echo 999999
 }
 
