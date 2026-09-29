@@ -29,6 +29,7 @@
 | `stack-python` | Python 타입힌트, docstring, 도구 |
 | `doc-review` | 기존 문서를 목소리 유지한 채 다듬기 |
 | `meeting-notes` | 회의록 작성 |
+| `note_session_state` | 현재 세션 작업을 vault 에 기록 (일간, 주간 보고용) |
 | `blog-draft` | 초안을 발행 가능한 글로 다듬기 |
 | `blog-post` | Jekyll 블로그에 발행 |
 | `clickup-task` | ClickUp 태스크 생성 |
