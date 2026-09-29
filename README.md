@@ -22,11 +22,14 @@
 
 | 스킬 | 용도 |
 |---|---|
+| `backup` | 현재 디렉토리를 바탕화면 share 폴더로 백업 (하위 .git 재귀, 구조 보존) |
+| `import` | 오늘 백업한 디렉토리를 반입용 zip 과 작업 요약 문서로 묶기 |
 | `atomic-commit` | 커밋 단위 판단과 Conventional Commits 형식 |
 | `implementation` | 언어 공통 코딩 규칙 |
 | `stack-python` | Python 타입힌트, docstring, 도구 |
 | `doc-review` | 기존 문서를 목소리 유지한 채 다듬기 |
 | `meeting-notes` | 회의록 작성 |
+| `note_session_state` | 현재 세션 작업을 vault 에 기록 (일간, 주간 보고용) |
 | `blog-draft` | 초안을 발행 가능한 글로 다듬기 |
 | `blog-post` | Jekyll 블로그에 발행 |
 | `clickup-task` | ClickUp 태스크 생성 |
