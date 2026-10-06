@@ -116,7 +116,7 @@ Python의 주석(Comment)과 독스트링(Docstring)은 한 줄을 72자 이내�
 
 ## 브랜치 전략: GitHub Flow
 - feature 브랜치에서 작업하고 `feature/`, `fix/`, `test/`, `chore/` 접두사를 쓴다.
-- main 으로는 rebase 후 --no-ff로 머지하고 브랜치를 지운다.
+- main 으로는 rebase 후 --no-ff로 머지하고 브랜치를 지운다, 머지 전에 rebase 된 상태인지 확인.
 - 머지 커밋의 제목은 merge: 로 시작하고 본문은 해당 브랜치에서의 작업 내용을 한글로 작성한다.
 
 # 문체
