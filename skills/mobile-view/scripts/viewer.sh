@@ -45,7 +45,7 @@ start_with() {
     roots_spec=$(printf '%s\n' "$@" | paste -sd: -)
     kill_listener
     (cd "$APP_DIR" && VIEWER_ROOTS="$roots_spec" VIEWER_PORT="$PORT" \
-        nohup uv run --frozen app.py >"$LOG" 2>&1 &)
+        nohup uv run --frozen app.py >"$LOG" 2>&1 </dev/null &)
     for _ in $(seq 1 20); do
         if curl -sf -o /dev/null "http://127.0.0.1:$PORT/"; then break; fi
         sleep 0.5
