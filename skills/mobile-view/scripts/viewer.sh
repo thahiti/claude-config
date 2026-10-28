@@ -44,8 +44,13 @@ start_with() {
     local roots_spec
     roots_spec=$(printf '%s\n' "$@" | paste -sd: -)
     kill_listener
-    (cd "$APP_DIR" && VIEWER_ROOTS="$roots_spec" VIEWER_PORT="$PORT" \
-        nohup uv run --frozen app.py >"$LOG" 2>&1 </dev/null &)
+    # 리다이렉션을 서브셸 전체에 걸어야 한다. 명령에만 걸면 && 목록을
+    # 감싼 비동기 서브셸이 호출자의 파이프를 쥔 채 서버를 기다린다.
+    (
+        cd "$APP_DIR"
+        VIEWER_ROOTS="$roots_spec" VIEWER_PORT="$PORT" \
+            exec nohup uv run --frozen app.py
+    ) >"$LOG" 2>&1 </dev/null &
     for _ in $(seq 1 20); do
         if curl -sf -o /dev/null "http://127.0.0.1:$PORT/"; then break; fi
         sleep 0.5
