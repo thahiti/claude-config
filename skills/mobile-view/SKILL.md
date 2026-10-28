@@ -59,6 +59,7 @@ http://mac-mini.taila50133.ts.net/#/harness-research/translation-guide.md
 | serve 해제 | `tailscale serve --http=80 off` |
 | 제외 대상 | `.git`, `node_modules`, `__pycache__`, `.venv` 는 트리에 나오지 않고 1MB 초과 파일과 바이너리는 다운로드로만 보인다 |
 | 로그 | `/tmp/mobile-viewer.log`, 현재 루트 목록은 `/tmp/mobile-viewer.roots` |
+| 읽던 위치 | 파일마다 휴대폰 브라우저에 저장된다. 루트 링크로 들어가면 마지막 파일이 그 자리에서 열린다 |
 
 ## Common Mistakes
 
