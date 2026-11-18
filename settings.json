@@ -71,7 +71,7 @@
       "Bash(git clean -fd:*)"
     ]
   },
-  "model": "opus",
+  "model": "fable",
   "hooks": {
     "PreToolUse": [
       {
