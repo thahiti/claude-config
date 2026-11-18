@@ -77,6 +77,11 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 | `meeting-notes` | 회의록이나 회의 정리 요청 | 그 외 |
 | `claude-config-doctor` | claude-config 리포를 고친 뒤 | 그 외 |
 
+# 모델 사용
+계획은 Fable, 구현은 Opus 가 맡는다.
+- `superpowers:subagent-driven-development` 에서 implementer 서브에이전트는 `model: opus` 로 띄운다. 리뷰어와 최종 리뷰는 스킬의 모델 선택 규칙을 따른다.
+- 현재 모델이 Fable 인데 inline 실행(`superpowers:executing-plans`)으로 구현을 시작하려 하면, 코드를 고치기 전에 `/model opus` 전환을 한 줄로 제안한다.
+
 # 질문시
 - 암묵지나 모호한 내용은 반드시 질문을 통해 구체화 한다
 - 질문을 할 때는 전체 문서가 아닌 해당 질문만 읽어도 이해가 되도록 배경 설명과 구체적 예시 파급효과 추천 이유를 같이 제시한다
