@@ -32,6 +32,7 @@
 | `clickup-task` | ClickUp 태스크 생성 |
 | `github-push` | GitHub 리포 생성과 push |
 | `gitlab-mr-review` | GitLab MR 코드 리뷰 |
+| `mobile-view` | 작업 결과를 Tailscale 링크로 휴대폰에서 보기 |
 | `sync-claude-config` | 이 리포를 머신에 적용 |
 | `claude-config-doctor` | 배포 무결성 점검 |
 
