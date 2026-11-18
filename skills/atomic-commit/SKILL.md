@@ -1,6 +1,7 @@
 ---
 name: atomic-commit
 description: Use when committing code, when the working tree has more than one logical change, when a commit message needs a Conventional Commits type or scope, or when another skill delegates committing to atomic-commit
+model: opus
 ---
 
 # Atomic Commit
